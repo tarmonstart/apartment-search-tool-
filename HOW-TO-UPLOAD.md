@@ -1,118 +1,107 @@
-# Getting these files into your own GitHub repo, by hand
+# Step by step: putting this online
 
-Nothing here needs Claude, and nothing needs to be "connected" to anything. You are just
-copying 29 files into a repository you own. Pick **one** of the two routes below.
+Repo:   https://github.com/tarmonstart/apartment-search-tool-
+Folder: C:\Users\Tuukka\Desktop\Home\riga-rentals-for-github   (31 files)
 
-The files to upload are everything in this folder:
+Route A (browser) leaves **nothing** on this PC — no credential is stored, the upload
+happens in the Chrome session you are already signed into. Route B is one command but
+does store a login for tarmonstart on this machine. Pick one.
 
-```
-C:\Users\Tuukka\Desktop\Home\riga-rentals-for-github
-```
+===============================================================================
+ROUTE A - BROWSER (recommended: no credentials stored on this PC)
+===============================================================================
 
----
+STEP 1  Open the repo
+        https://github.com/tarmonstart/apartment-search-tool-
+        Make sure the top-right avatar is tarmonstart, not the work account.
 
-# Route A — the GitHub website (no software, easiest)
+STEP 2  Click "Add file" (next to the green Code button) -> "Upload files"
 
-Good if you would rather not touch a terminal.
+STEP 3  Open the folder in File Explorer:
+        C:\Users\Tuukka\Desktop\Home\riga-rentals-for-github
 
-### 1. Open your repo on github.com
+STEP 4  Press Ctrl+A  (selects all 15 items: files + the folders
+        .github, lib, ui, state)
 
-If you have not made it yet: **github.com → + (top right) → New repository**, give it a
-name (e.g. `riga-rentals`), and **tick "Add a README file"** so the repo is not empty.
+STEP 5  Drag that selection into the browser window and drop it.
 
-### 2. Add file → Upload files
+        >> THE ONE THING TO GET RIGHT <<
+        Drag the CONTENTS, not the folder itself. If you drag the folder,
+        everything ends up one level too deep and the scheduled job never runs.
+        Sub-folders (lib/sources/..., .github/workflows/...) are preserved
+        automatically - you never recreate them by hand.
+        If Explorer shows a .git folder, ignore it; GitHub skips it.
 
-On the repo's main page: the **Add file** button (next to the green Code button) →
-**Upload files**.
+STEP 6  Wait for the file list to finish appearing (about 600 KB).
 
-### 3. Drag the files in
+STEP 7  Scroll down, type a message like "Riga rental finder",
+        click "Commit changes".
 
-Open `riga-rentals-for-github` in File Explorer. Press **Ctrl+A** to select everything —
-this must include the **`.github`** and **`lib`** and **`ui`** and **`state`** folders —
-then drag the selection into the browser window.
+STEP 8  VERIFY THE ONE FILE THAT MATTERS
+        In the repo, click .github -> workflows -> scrape.yml must be there.
+        If it is missing, the twice-a-day job will never run. Re-upload just
+        that folder if so.
 
-> **This is the step that matters:** drag the *contents* of the folder, not the folder
-> itself. If you drag the folder, everything ends up one level too deep and the workflow
-> will not run.
->
-> Folder structure IS preserved when you drag folders in — GitHub keeps `lib/sources/...`
-> and `.github/workflows/...` intact. You do not need to recreate them by hand.
+Now skip to "AFTER UPLOADING".
 
-Wait for the file list to finish appearing (it uploads ~576 KB, a few seconds).
+===============================================================================
+ROUTE B - ONE COMMAND (faster, but stores a tarmonstart login on this PC)
+===============================================================================
 
-### 4. Commit
+The folder is already a prepared git repository: all 31 files are committed, the
+author is tarmonstart (not your work identity), and the remote already points at
+your repo. Only the upload is left.
 
-Type a message like `Riga rental finder` and press **Commit changes**.
+STEP 1  In File Explorer go to:
+        C:\Users\Tuukka\Desktop\Home\riga-rentals-for-github
+        Click the address bar, type  powershell  and press Enter.
 
-### 5. Check it looks right
+STEP 2  Run:
+            git push -u origin main
 
-The repo's file list should show `find-rentals.js`, `config.json`, and the folders `lib`,
-`ui`, `state`, `.github`. Click into `.github/workflows/` — `scrape.yml` must be there. If
-that file is missing or in the wrong place, the twice-a-day job will never run.
+STEP 3  A "Git Credential Manager" window appears.
+        Choose "Sign in with your browser" and sign in as tarmonstart.
 
-Now go to **DEPLOY.md → step 2** in this folder for the two repo settings you must change.
+        If it uses the wrong account, or you get 403:
+          Start menu -> Credential Manager -> Windows Credentials
+          -> remove entries starting with  git:https://github.com
+          -> run the push again.
 
----
+        (The repo's starter README has already been merged in locally, so the
+         push should go straight through with no "rejected" error.)
 
-# Route B — Git on your PC (a bit faster, one-time setup)
+===============================================================================
+AFTER UPLOADING - 3 settings, then it runs by itself
+===============================================================================
 
-You already have Git installed (2.54).
+STEP 9   Settings -> Actions -> General -> scroll to "Workflow permissions"
+         -> select "Read and write permissions" -> Save.
+         (The job writes seen.json and geocache.json back after each crawl.
+          Without this it fails at the last step.)
 
-### 1. Make the repo on github.com
+STEP 10  Settings -> Pages -> "Build and deployment" -> Source: "GitHub Actions"
+         NOT "Deploy from a branch" - that is the old way and will not work.
 
-**+ → New repository → name it → create.** This time **do NOT tick "Add a README"** —
-leave it completely empty. Copy the `https://github.com/...` URL it shows you.
+         The repo is PUBLIC, so Pages works on the free plan - nothing to pay.
 
-### 2. In PowerShell, run these one at a time
+STEP 11  Actions tab -> "Scrape and publish" -> "Run workflow" button.
+         It takes 5-10 minutes. Watch it go green.
 
-```powershell
-cd "C:\Users\Tuukka\Desktop\Home\riga-rentals-for-github"
-git init
-git add -A
-git commit -m "Riga rental finder"
-git branch -M main
-git remote add origin https://github.com/YOUR-USERNAME/YOUR-REPO.git
-git push -u origin main
-```
+STEP 12  Your report:
+             https://tarmonstart.github.io/apartment-search-tool-/
 
-Replace `YOUR-USERNAME/YOUR-REPO` with your actual repo.
+         After this it runs itself at 05:00 and 12:00 UTC
+         (08:00 / 15:00 Riga in summer, 07:00 / 14:00 in winter).
 
-### 3. If it asks you to sign in
+STEP 13  Stop your PC from scraping as well - in PowerShell:
+             schtasks /Delete /TN "RigaRentals Morning" /F
+             schtasks /Delete /TN "RigaRentals Afternoon" /F
 
-A browser window will pop up — sign in as **the account that owns the new repo**.
+===============================================================================
+UPDATING IT LATER
+===============================================================================
 
-**If it pushes as the wrong account, or you get a 403:** your PC has another GitHub account
-saved. Clear it and try the push again:
+Route A: upload the changed file again the same way - GitHub replaces it.
+Route B: git add -A  ->  git commit -m "tweak"  ->  git push
 
-- Start menu → **Credential Manager** → **Windows Credentials**
-- Find the entries starting with `git:https://github.com` → **Remove**
-- Run `git push -u origin main` again and sign in as the right account.
-
-### 4. If the push is rejected with "updates were rejected"
-
-The repo was not empty (you ticked "Add a README"). Run:
-
-```powershell
-git pull --rebase origin main
-git push -u origin main
-```
-
----
-
-## After either route
-
-Follow **DEPLOY.md**, starting at step 2. The two settings that people always miss:
-
-1. **Settings → Pages → Source: `GitHub Actions`**
-2. **Settings → Actions → General → Workflow permissions: `Read and write permissions`**
-
-Then **Actions → "Scrape and publish" → Run workflow** to test it once.
-
-## Updating it later
-
-If you change something on your PC and want the online copy updated:
-
-- **Route A:** upload the changed file again the same way — GitHub replaces it.
-- **Route B:** `git add -A`, `git commit -m "tweak"`, `git push`.
-
-You do not need to re-upload everything, just what changed.
+You never re-upload everything, only what changed.
