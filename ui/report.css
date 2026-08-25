@@ -710,49 +710,108 @@ footer.foot .keys b {
 
 /* --- phones and small tablets --------------------------------------------- */
 
+/* --- phones and small tablets ---------------------------------------------
+
+   Measured on a 375x812 phone before this block existed: 241px of the 812px
+   screen (30%) was header + filter bar before the first card, and each photo
+   was the 174px desktop thumbnail stretched across a 357px card. Both are
+   fixed here — the chrome shrinks and stays out of the way, and the photo
+   rendition is chosen in report.js (shotSize).
+   --------------------------------------------------------------------------- */
+
 @media (max-width: 720px) {
   .top, .controls, footer.foot { padding-left: 12px; padding-right: 12px; }
 
   /* header: keep the identity, shed the bulk */
-  .top { gap: 10px; padding-top: 12px; padding-bottom: 10px; }
-  .mark { width: 28px; height: 28px; }
-  .tally { order: 5; width: 100%; margin: 0; }
-  .pip { padding: 5px 7px; }
+  .top { gap: 8px; padding-top: 10px; padding-bottom: 9px; }
+  .mark { width: 26px; height: 26px; }
+  h1 { font-size: 13px; letter-spacing: 0.1em; }
+  .sub { font-size: 10.5px; }
+  .brand { gap: 10px; }
+  .tally { margin: 0; gap: 3px; }
+  .pip { padding: 6px 6px; font-size: 10px; }
+  #mapBtn { display: none; }   /* the floating Map button replaces it */
+  .head-actions { gap: 6px; }
 
-  /* on a phone even Sort and Pile fold away; only search stays out */
-  .controls { padding-top: 8px; padding-bottom: 9px; }
+  /* filter bar: one slim row. The search field keeps its label off-screen
+     rather than above it, which alone gave back ~18px of every screen. */
+  .controls { padding-top: 7px; padding-bottom: 8px; gap: 7px; }
+  .controls .row-main { gap: 7px; align-items: center; }
+  .controls .row-main .field.grow { flex: 1 1 auto; }
+  .controls .row-main .field.grow .flabel { position: absolute; left: -9999px; }
   .controls .row-main .field:not(.grow) { display: none; }
   .controls.open .row-main .field:not(.grow) { display: flex; }
+  .controls.open .row-main .field.grow .flabel { position: static; }
+  .count { font-size: 10.5px; width: 100%; text-align: right; margin: 0; }
 
-  /* fingers, not cursors: bigger targets everywhere */
+  /* fingers, not cursors: 44px is the iOS minimum for a comfortable target */
   .controls input[type="search"],
   .controls input[type="number"],
-  .controls select { font-size: 16px; padding: 9px 10px; } /* 16px stops iOS zooming the page on focus */
+  .controls select { font-size: 16px; padding: 11px 10px; } /* 16px stops iOS zooming on focus */
   .mini { width: 84px; }
-  .chip span { padding: 9px 12px; font-size: 12px; }
-  .ghost { padding: 9px 12px; }
-  .act { padding: 11px 2px; font-size: 12px; }
-  .addr { font-size: 14.5px; }
+  .chip span { padding: 11px 13px; font-size: 12px; }
+  .ghost { padding: 11px 13px; }
+  .act { padding: 15px 2px; font-size: 12px; }
+  .acts { gap: 6px; }
+  .addr { font-size: 15px; padding: 4px 0; }
+  .sameaddr { padding: 7px 11px; font-size: 11.5px; }
 
-  .grid { grid-template-columns: 1fr; padding: 10px 10px 32px; gap: 10px; }
-  .card { contain-intrinsic-size: auto 460px; }
+  /* one card per row, and a slightly shorter photo so more than one fits */
+  .grid { grid-template-columns: 1fr; padding: 10px 10px 84px; gap: 12px; }
+  .card { contain-intrinsic-size: auto 430px; }
+  .shot { aspect-ratio: 3 / 2; }
+  .body { gap: 9px; padding: 12px 13px 14px; }
+  .price { font-size: 23px; }
+
+  /* the Map button lives in the header, which scrolls away — put a reachable
+     one at the bottom of the screen where a thumb actually is */
+  .mapfab {
+    position: fixed;
+    right: 14px;
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    z-index: 40;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 16px 19px;
+    border: 1px solid var(--accent);
+    border-radius: 999px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font: 600 13px/1 var(--mono);
+    letter-spacing: 0.04em;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+    cursor: pointer;
+  }
 
   /* lightbox: the photo owns the screen; arrows are for desktops, thumbs swipe */
   .lightbox { grid-template-columns: 0 1fr 0; }
   .lb-prev, .lb-next { display: none; }
   .lb-stage { padding: 8px 0 4px; }
-  .lb-close { top: 10px; right: 10px; width: 40px; height: 40px; font-size: 16px; }
+  .lb-close { top: 10px; right: 10px; width: 44px; height: 44px; font-size: 16px; }
+  .lb-strip { padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
   .frame { width: 62px; height: 47px; }
 
-  .map-head { flex-wrap: wrap; gap: 8px; }
-  .map-title { flex-basis: 100%; order: 3; white-space: normal; }
+  /* map panel */
+  .map-head { flex-wrap: wrap; gap: 8px; padding: 9px 12px; }
+  .map-title { flex-basis: 100%; order: 3; white-space: normal; font-size: 11.5px; }
+  .map-close { width: 44px; height: 44px; }
+  .mpop { width: min(272px, 76vw); }
+  .map-legend { padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); }
 
+  footer.foot { padding-bottom: calc(26px + env(safe-area-inset-bottom, 0px)); }
   footer.foot .keys { display: none; } /* keyboard hints mean nothing to a touchscreen */
 }
 
+body.panel-open .mapfab { display: none; }
+
+/* the floating map button is a phone affordance only */
+@media (min-width: 721px) { .mapfab { display: none; } }
+
 @media (max-width: 400px) {
-  .head-actions .ghost { padding: 8px 9px; font-size: 11px; }
-  .grid { padding: 8px 8px 28px; }
+  .head-actions .ghost { padding: 9px 10px; font-size: 11px; }
+  .grid { padding: 8px 8px 84px; }
+  .acts { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (prefers-reduced-motion: reduce) {

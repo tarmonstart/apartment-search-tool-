@@ -436,10 +436,17 @@
     return t;
   }
 
+  // A phone shows ONE card per row, so its photo is ~360 CSS px (720-1080 real
+  // pixels at DPR 2-3) — four times what the desktop grid rendition holds. Ask
+  // for the bigger 'card' rendition there, and keep the small one on desktop
+  // where cards are 268px and twenty of them share a screen.
+  var narrowMQ = window.matchMedia ? window.matchMedia("(max-width: 720px)") : null;
+  function shotSize() { return narrowMQ && narrowMQ.matches ? "card" : "grid"; }
+
   function cardHTML(l) {
     var v = verdictOf(l), seen = seenOf(l);
     var n = (l.img && l.img.p && l.img.p.length) || 0;
-    var thumb = n ? imgUrl(l.img.k, l.img.p[0], "grid") : "";
+    var thumb = n ? imgUrl(l.img.k, l.img.p[0], shotSize()) : "";
 
     var grp = addrGroups[l.id];
     var akey = addrKey(l);
@@ -645,6 +652,7 @@
     lbList = l; lbIdx = idx || 0;
     lb.hidden = false;
     document.body.classList.add("lb-open");
+    document.body.classList.add("panel-open");
     buildStrip();
     showLB();
     lb.focus();
@@ -652,6 +660,7 @@
   function closeLB() {
     lb.hidden = true; lbList = null;
     document.body.classList.remove("lb-open");
+    document.body.classList.remove("panel-open");
   }
   function buildStrip() {
     var l = lbList, h = "";
@@ -714,6 +723,7 @@
   }
   function openMapPanel() {
     mapEl.hidden = false;
+    document.body.classList.add("panel-open");
     document.body.classList.add("lb-open");
     ensureMap();
     // Leaflet measured the container while it was display:none — remeasure.
@@ -721,6 +731,7 @@
   }
   function closeMap() {
     mapEl.hidden = true;
+    document.body.classList.remove("panel-open");
     document.body.classList.remove("lb-open");
     // verdicts made on the map may change what the active filters admit
     if (mapChanged) { mapChanged = false; render(); }
@@ -1142,8 +1153,14 @@
     mapEl = $("#map");
     var mapBtn = $("#mapBtn");
     var anyGeo = DATA.some(function (l) { return l.lat != null; });
-    if (!HAS_MAP || !anyGeo) mapBtn.hidden = true;
-    else mapBtn.addEventListener("click", openMapAll);
+    var mapFab = $("#mapFab");
+    if (!HAS_MAP || !anyGeo) {
+      mapBtn.hidden = true;
+      if (mapFab) mapFab.hidden = true;
+    } else {
+      mapBtn.addEventListener("click", openMapAll);
+      if (mapFab) mapFab.addEventListener("click", openMapAll);
+    }
     $("#mapClose").addEventListener("click", closeMap);
     var drawBtn = $("#drawBtn");
     if (drawBtn) drawBtn.addEventListener("click", function () {
@@ -1258,6 +1275,24 @@
       if (Date.now() - born < 60 * 60 * 1000) return;
       location.reload();
     }, 10 * 60 * 1000);
+
+    // Crossing the phone/desktop breakpoint changes which photo rendition the
+    // cards should request. Watch for it two ways, because a matchMedia change
+    // event is not guaranteed to arrive in every embedding: the event when it
+    // does fire, and a debounced resize check that compares the ANSWER rather
+    // than the width — so a redraw happens exactly once per real crossing and
+    // never on an ordinary resize tick.
+    var lastShot = shotSize();
+    var checkBP = function () {
+      var now = shotSize();
+      if (now !== lastShot) { lastShot = now; render(); }
+    };
+    if (narrowMQ) {
+      if (narrowMQ.addEventListener) narrowMQ.addEventListener("change", checkBP);
+      else if (narrowMQ.addListener) narrowMQ.addListener(checkBP);
+    }
+    window.addEventListener("resize", debounce(checkBP, 200), { passive: true });
+    window.addEventListener("orientationchange", checkBP, { passive: true });
 
     render();
     paintDirty();
