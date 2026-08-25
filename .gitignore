@@ -1,0 +1,21 @@
+# Build outputs — the Action rebuilds these on every run, so they should not be
+# committed (they would conflict on every single crawl).
+listings.html
+listings.csv
+_site/
+
+# Personal data. user-state.json is your like/maybe/discard piles; on a PUBLIC
+# repo it must stay out. (On a private repo you may commit it deliberately to
+# sync verdicts between devices — see DEPLOY.md.)
+state/user-state.json
+state/user-state*.json
+state/backups/
+state/last-run.json
+state/last-run.log
+
+# Leftover captures from the original build, unused by the code
+api.json
+body6.html
+
+node_modules/
+.DS_Store

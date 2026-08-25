@@ -1,0 +1,65 @@
+name: Scrape and publish
+
+# Twice a day. GitHub cron is UTC: 05:00 / 12:00 UTC is 08:00 / 15:00 in Rīga in
+# summer, 07:00 / 14:00 in winter. Scheduled runs can start a few minutes late —
+# that is normal for GitHub Actions and does not matter for a rental feed.
+on:
+  schedule:
+    - cron: "0 5 * * *"
+    - cron: "0 12 * * *"
+  workflow_dispatch: {}          # the "Run workflow" button, for a manual refresh
+
+permissions:
+  contents: write                # to commit seen.json / geocache.json back
+  pages: write
+  id-token: write
+
+concurrency:
+  group: scrape
+  cancel-in-progress: false      # never kill a run mid-crawl
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40          # a full crawl is ~5-10 min; this is a runaway guard
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22       # no dependencies to install — plain Node
+
+      - name: Scrape every source and build the report
+        run: node find-rentals.js
+
+      # seen.json powers the "new" flags, geocache.json stops the map re-asking
+      # Nominatim for addresses it already knows. Both must survive between runs,
+      # and a runner is wiped every time — so they live in the repo.
+      - name: Persist crawl state
+        run: |
+          git config user.name "rentals-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- state/seen.json state/geocache.json || true
+          git diff --cached --quiet || git commit -m "state: crawl $(date -u '+%Y-%m-%d %H:%M') UTC"
+          git push
+
+      - name: Assemble the site
+        run: |
+          mkdir -p _site
+          cp listings.html _site/index.html
+          cp listings.html listings.csv _site/
+          touch _site/.nojekyll
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

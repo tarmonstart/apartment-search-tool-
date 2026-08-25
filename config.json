@@ -1,0 +1,95 @@
+{
+  "_comment": "Edit these to change what the finder looks for. Re-run after editing.",
+
+  "siteUrl": "",
+  "_siteUrl": "Public URL where the report is hosted (e.g. https://rentals.example.com/listings.html). Only used for SEO/GEO tags (canonical, Open Graph, JSON-LD @id). Leave empty when browsing the file locally.",
+
+  "maxPrice": 1500,
+  "maxPriceWithUtilities": 1600,
+  "_maxPriceWithUtilities": "Higher cap allowed when utilities are included in the rent (base maxPrice applies otherwise).",
+  "minPrice": 0,
+  "allowedRooms": [1, 2, 3, 4],
+  "preferredRooms": 2,
+
+  "minArea": 20,
+  "_minArea": "Skip apartments smaller than this (m²). Lowered to 20 when 1-room flats were added — most Rīga studios are 20-30 m², so a 30 m² floor would have hidden nearly all of them.",
+  "excludeFirstFloor": false,
+  "_excludeFirstFloor": "Skip ground/1st-floor apartments (floor 1). Listings with unknown floor are kept.",
+
+  "renovatedPriority": true,
+  "_renovatedPriority": "Sort renovated / new listings to the top.",
+  "excludeOld": true,
+  "_excludeOld": "Drop listings clearly flagged as needing repair / run-down. Unknown condition is kept.",
+  "requireRenovated": false,
+  "_requireRenovated": "Set true to keep ONLY listings confirmed renovated/new (hides unknowns too).",
+
+  "utilitiesPriority": true,
+  "_utilitiesPriority": "true = sort utilities-included listings to the top (does NOT hide the others). Set requireUtilitiesIncluded=true to hide non-inclusive ones entirely.",
+  "requireUtilitiesIncluded": false,
+
+  "sslv": {
+    "enabled": true,
+    "category": "all",
+    "maxPages": 80,
+    "_note": "'all' = every Rīga district (the district is read from each ad's link). Use a district slug like 'centre' to narrow again. Paging stops automatically at the last page."
+  },
+
+  "city24": {
+    "enabled": true,
+    "maxPages": 20,
+    "allowedDistricts": [],
+    "_note": "Empty list = every Rīga district. Add names like [\"Centrs\", \"Vecrīga\"] to narrow."
+  },
+
+  "pplv": {
+    "enabled": true,
+    "categoryId": 3811,
+    "regions": [801, 807, 811, 813, 834, 837, 846],
+    "_note": "3811 = apartments. Region ids are pp.lv Rīga districts (801 Avoti · 807 Brasa · 811 Centrs · 813 Dārzciems · 834 Pētersala-Andrejsala · 837 Purvciems · 846 Teika). Each returns its ~20 newest rentals; pp.lv exposes no deeper paging."
+  },
+
+  "varianti": {
+    "enabled": true,
+    "districts": [],
+    "maxPages": 8,
+    "_note": "varianti.lv JSON API (also the data behind cityreal.lv). Empty districts = the whole of Rīga; ids from POST api.varianti.lv/rest/address/district (1 = Centrs) to narrow."
+  },
+
+  "latio": {
+    "enabled": true,
+    "places": [],
+    "maxPages": 15,
+    "_note": "latio.lv, server-rendered HTML. Empty places = whole country scanned, Rīga kept; use location option ids from latio.lv/lv/ipasumi (7533 = Centrs) to narrow. Latio publishes no posting dates."
+  },
+
+  "arcoreal": {
+    "enabled": true,
+    "places": ["visas-vietas"],
+    "maxPages": 15,
+    "_note": "arcoreal.lv, server-rendered HTML. 'visas-vietas' = all of Rīga; district slugs like 'centrs' narrow it. Card data only: one photo, no dates."
+  },
+
+  "geocode": {
+    "enabled": true,
+    "maxPerRun": 60,
+    "_note": "Nominatim (OpenStreetMap) fills in coordinates for the map when a source doesn't publish them. Cached forever in state/geocache.json; at most maxPerRun new addresses per run, 1 request/second, per the Nominatim usage policy. Data © OpenStreetMap contributors."
+  },
+
+  "deepCheckUtilities": true,
+  "_deepCheckUtilities": "Fetch each surviving ss.lv listing page for the exact date, the full text (utilities/condition/furnishing) and the COMPLETE photo gallery. Turn it off, or pass --fast, for a quicker but shallower run.",
+
+  "dedupe": {
+    "threshold": 4.0,
+    "_threshold": "How much evidence is needed before two posts are treated as the same flat. Higher = more cautious (more duplicates survive); lower = more aggressive (risks merging two different flats). 4.0 was calibrated against hand-checked pairs — see lib/dedupe.js.",
+    "areaTolerance": 2.5,
+    "_areaTolerance": "Two posts of one flat may quote areas this far apart (m²) — sites round differently.",
+    "geoMetres": 40,
+    "_geoMetres": "Coordinates this close count as the same building (city24 publishes lat/lon; the other two do not).",
+    "maxPriceRatio": 1.35,
+    "_maxPriceRatio": "Above this price ratio, the gap counts as evidence the posts are NOT the same flat."
+  },
+
+  "requestDelayMs": 600,
+  "concurrency": 4,
+  "_politeness": "requestDelayMs is the pause between requests to the same site, concurrency the number in flight. These sites are free and public — do not raise them much."
+}
