@@ -261,7 +261,10 @@ async function collectAll() {
   const withPhotos = list.filter((l) => (l.photoRefs || []).length).length;
 
   const meta = {
-    generated: new Date().toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }),
+    // the cloud runner is on UTC; the reader is in Rīga
+    generated: new Date().toLocaleString("fi-FI", {
+      timeZone: "Europe/Riga", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit",
+    }),
     total: list.length,
     nnew,
     merged,

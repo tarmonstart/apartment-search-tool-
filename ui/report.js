@@ -188,8 +188,11 @@
     if (l.furnished === "unfurnished") tags.push('<span class="tag">kalustamaton</span>');
 
     var links = [{ source: l.source, url: l.url }].concat(l.alts || []);
-    var seenSrc = {};
-    links = links.filter(function (a) { if (seenSrc[a.url]) return false; seenSrc[a.url] = 1; return true; });
+    var seenUrl = {}, perSrc = {};
+    links = links.filter(function (a) { if (seenUrl[a.url]) return false; seenUrl[a.url] = 1; return true; });
+    // a re-post on the same site is labelled "ss.lv 2", not counted as another site
+    links.forEach(function (a) { perSrc[a.source] = (perSrc[a.source] || 0) + 1; a.label = a.source + (perSrc[a.source] > 1 ? " " + perSrc[a.source] : ""); });
+    var nSites = Object.keys(perSrc).length;
 
     var facts = [];
     if (l.rooms != null) facts.push(roomsTxt(l.rooms));
@@ -201,7 +204,7 @@
         '<div class="gal-track">' + gallery + "</div>" +
         (ps.length > 1 ? '<span class="gal-count">1/' + ps.length + "</span>" : "") +
         (l.isNew ? '<span class="pill new">UUSI</span>' : "") +
-        (links.length > 1 ? '<span class="pill multi" title="Sama asunto useammalla sivulla">' + links.length + " sivua</span>" : "") +
+        (nSites > 1 ? '<span class="pill multi" title="Sama asunto useammalla sivustolla">' + nSites + " sivustoa</span>" : "") +
       "</div>" +
       '<div class="info">' +
         '<div class="row1"><span class="price">' + (l.price == null ? "—" : esc(l.price) + " €") + "</span>" +
@@ -213,7 +216,7 @@
         (tags.length ? '<div class="tags">' + tags.join("") + "</div>" : "") +
         (l.description ? '<p class="desc">' + esc(l.description) + "</p>" : "") +
         '<div class="links">' + links.map(function (a) {
-          return '<a href="' + esc(safeUrl(a.url)) + '" target="_blank" rel="noopener">' + esc(a.source) + " ↗</a>";
+          return '<a href="' + esc(safeUrl(a.url)) + '" target="_blank" rel="noopener">' + esc(a.label) + " ↗</a>";
         }).join("") + "</div>" +
       "</div>" +
       '<div class="vote">' +
