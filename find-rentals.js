@@ -262,8 +262,8 @@ async function collectAll() {
 
   const meta = {
     // the cloud runner is on UTC; the reader is in Rīga
-    generated: new Date().toLocaleString("fi-FI", {
-      timeZone: "Europe/Riga", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit",
+    generated: new Date().toLocaleString("en-GB", {
+      timeZone: "Europe/Riga", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
     }),
     total: list.length,
     nnew,

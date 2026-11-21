@@ -6,7 +6,7 @@
 // The model is deliberately simple:
 //   * every flat is either untouched, liked (👍) or rejected (👎)
 //   * three tabs show exactly those three piles — judging a flat moves it out
-//     of "Uudet", so the same flat never has to be looked at twice
+//     of "New", so the same flat never has to be looked at twice
 //   * a handful of filters, all in one sheet, remembered between visits
 //
 // Verdict storage is compatible with the earlier like/maybe/discard report
@@ -92,13 +92,17 @@
   }
   function paintSaveNote() {
     $("#saveNote").textContent = api
-      ? "Valintasi tallentuvat suoraan koneelle (state/user-state.json)."
-      : "Valintasi tallentuvat tähän selaimeen. Siirrä toiselle laitteelle varmuuskopiolla.";
+      ? "Your votes are saved straight to this computer (state/user-state.json)."
+      : "Your votes are saved in this browser. Use a backup to move them to another device.";
   }
 
   // ---------------------------------------------------------------- filters
-  var DEFAULT_F = { max: null, rooms: [], area: null, districts: [], flags: [], q: "", sort: "new" };
-  var F = Object.assign({}, DEFAULT_F, load(LS_FILTERS, {}) || {});
+  // zones: areas drawn on the map, each a ring of [lat, lon] points
+  var DEFAULT_F = { max: null, rooms: [], area: null, districts: [], zones: [], flags: [], q: "", sort: "new" };
+  function freshF() { return JSON.parse(JSON.stringify(DEFAULT_F)); }
+  // a fresh copy, so toggling a filter never edits the defaults that "Clear" restores
+  var F = Object.assign(freshF(), load(LS_FILTERS, {}) || {});
+  if (!Array.isArray(F.zones)) F.zones = [];
   var tab = load(LS_TAB, "todo");
   if (["todo", "like", "discard"].indexOf(tab) < 0) tab = "todo";
 
@@ -118,6 +122,8 @@
     }
     if (F.area != null && (l.area == null || l.area < F.area)) return false;
     if (F.districts.length && F.districts.indexOf(l.district || "") < 0) return false;
+    // a drawn area admits only flats with a known position inside it
+    if (F.zones.length && (l.lat == null || !inZones(l.lat, l.lon))) return false;
     for (var i = 0; i < F.flags.length; i++) {
       var f = F.flags[i];
       if (f === "fresh" && Date.now() - l._fresh > 3 * 864e5) return false;
@@ -140,7 +146,25 @@
   };
 
   function activeCount() {
-    return (F.max != null) + (F.rooms.length > 0) + (F.area != null) + (F.districts.length > 0) + F.flags.length + (!!F.q);
+    return (F.max != null) + (F.rooms.length > 0) + (F.area != null) + (F.districts.length > 0) +
+      (F.zones.length > 0) + F.flags.length + (!!F.q);
+  }
+
+  // ray casting: is [lat, lon] inside any drawn ring?
+  function inRing(p, lat, lon) {
+    var inside = false;
+    for (var i = 0, j = p.length - 1; i < p.length; j = i++) {
+      var yi = p[i][0], xi = p[i][1], yj = p[j][0], xj = p[j][1];
+      if ((yi > lat) !== (yj > lat) && lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  }
+  function inZones(lat, lon) {
+    for (var i = 0; i < F.zones.length; i++) if (inRing(F.zones[i], lat, lon)) return true;
+    return false;
+  }
+  function zonesLabel() {
+    return F.zones.length === 1 ? "drawn area" : F.zones.length + " drawn areas";
   }
 
   // ------------------------------------------------------------- rendering
@@ -158,13 +182,13 @@
   function ago(s) {
     var t = Date.parse(s || ""); if (!t) return "";
     var d = Math.floor((Date.now() - t) / 864e5);
-    if (d <= 0) return "tänään";
-    if (d === 1) return "eilen";
-    if (d < 31) return d + " pv sitten";
+    if (d <= 0) return "today";
+    if (d === 1) return "yesterday";
+    if (d < 31) return d + " days ago";
     var m = Math.round(d / 30);
-    return m < 12 ? m + " kk sitten" : "yli vuosi sitten";
+    return m < 12 ? (m === 1 ? "a month ago" : m + " months ago") : "over a year ago";
   }
-  function roomsTxt(n) { return n === 1 ? "1 huone" : n + " huonetta"; }
+  function roomsTxt(n) { return n === 1 ? "1 room" : n + " rooms"; }
   var narrow = window.matchMedia ? window.matchMedia("(max-width: 640px)") : { matches: false };
   function photos(l) { return (l.img && l.img.p) || []; }
 
@@ -176,16 +200,16 @@
           return '<img src="' + esc(imgUrl(l.img.k, p, size)) + '"' + (i ? ' loading="lazy"' : "") +
             ' decoding="async" alt="" draggable="false" data-i="' + i + '">';
         }).join("")
-      : '<div class="nophoto">ei kuvia</div>';
+      : '<div class="nophoto">no photos</div>';
     var tags = [];
-    if (l.utilities === "included") tags.push('<span class="tag good">sis. kommunaalit</span>');
+    if (l.utilities === "included") tags.push('<span class="tag good">utilities included</span>');
     else if (l.summerUtil != null || l.winterUtil != null)
-      tags.push('<span class="tag">+ komm. ' + (l.summerUtil == null ? "?" : l.summerUtil) + "–" + (l.winterUtil == null ? "?" : l.winterUtil) + " €</span>");
-    else if (l.utilities === "excluded") tags.push('<span class="tag">+ kommunaalit</span>');
-    if (l.renovation === "renovated") tags.push('<span class="tag good">remontoitu</span>');
-    if (l.renovation === "old") tags.push('<span class="tag warn">vaatii remonttia</span>');
-    if (l.furnished === "furnished") tags.push('<span class="tag">kalustettu</span>');
-    if (l.furnished === "unfurnished") tags.push('<span class="tag">kalustamaton</span>');
+      tags.push('<span class="tag">+ utilities ' + (l.summerUtil == null ? "?" : l.summerUtil) + "–" + (l.winterUtil == null ? "?" : l.winterUtil) + " €</span>");
+    else if (l.utilities === "excluded") tags.push('<span class="tag">+ utilities</span>');
+    if (l.renovation === "renovated") tags.push('<span class="tag good">renovated</span>');
+    if (l.renovation === "old") tags.push('<span class="tag warn">needs work</span>');
+    if (l.furnished === "furnished") tags.push('<span class="tag">furnished</span>');
+    if (l.furnished === "unfurnished") tags.push('<span class="tag">unfurnished</span>');
 
     var links = [{ source: l.source, url: l.url }].concat(l.alts || []);
     var seenUrl = {}, perSrc = {};
@@ -197,14 +221,14 @@
     var facts = [];
     if (l.rooms != null) facts.push(roomsTxt(l.rooms));
     if (l.area != null) facts.push(l.area + " m²");
-    if (l.floor) facts.push(esc(l.floor) + " krs");
+    if (l.floor) facts.push("floor " + esc(l.floor));
 
     return '<article class="card' + (v ? " is-" + v : "") + '" data-id="' + esc(l.id) + '">' +
       '<div class="gal" data-n="' + ps.length + '">' +
         '<div class="gal-track">' + gallery + "</div>" +
         (ps.length > 1 ? '<span class="gal-count">1/' + ps.length + "</span>" : "") +
         (l.isNew ? '<span class="pill new">UUSI</span>' : "") +
-        (nSites > 1 ? '<span class="pill multi" title="Sama asunto useammalla sivustolla">' + nSites + " sivustoa</span>" : "") +
+        (nSites > 1 ? '<span class="pill multi" title="The same flat on several sites">' + nSites + " sites</span>" : "") +
       "</div>" +
       '<div class="info">' +
         '<div class="row1"><span class="price">' + (l.price == null ? "—" : esc(l.price) + " €") + "</span>" +
@@ -212,7 +236,7 @@
           '<span class="age">' + esc(ago(l.firstSeen || l.date)) + "</span></div>" +
         '<div class="facts">' + facts.join(" · ") + "</div>" +
         '<button class="addr" type="button"' + (l.lat != null ? "" : " disabled") + ">" +
-          "📍 " + esc(l.street || "osoite puuttuu") + (l.district && l.district !== "Rīga" ? ", " + esc(l.district) : "") + "</button>" +
+          "📍 " + esc(l.street || "no address") + (l.district && l.district !== "Rīga" ? ", " + esc(l.district) : "") + "</button>" +
         (tags.length ? '<div class="tags">' + tags.join("") + "</div>" : "") +
         (l.description ? '<p class="desc">' + esc(l.description) + "</p>" : "") +
         '<div class="links">' + links.map(function (a) {
@@ -220,8 +244,8 @@
         }).join("") + "</div>" +
       "</div>" +
       '<div class="vote">' +
-        '<button class="no' + (v === "discard" ? " on" : "") + '" type="button" data-v="discard" aria-label="En tykkää">👎<span>Ei</span></button>' +
-        '<button class="yes' + (v === "like" ? " on" : "") + '" type="button" data-v="like" aria-label="Tykkään">👍<span>Tykkään</span></button>' +
+        '<button class="no' + (v === "discard" ? " on" : "") + '" type="button" data-v="discard" aria-label="Reject">👎<span>Nope</span></button>' +
+        '<button class="yes' + (v === "like" ? " on" : "") + '" type="button" data-v="like" aria-label="Like">👍<span>Like</span></button>' +
       "</div>" +
     "</article>";
   }
@@ -274,22 +298,23 @@
     if (rows.length) { e.hidden = true; return; }
     e.hidden = false;
     e.innerHTML = tab === "todo"
-      ? (filtered.length ? "<b>Kaikki käyty läpi! 🎉</b><br>Uusia asuntoja tulee kahdesti päivässä." : "<b>Ei osumia.</b><br>Väljennä suodattimia.")
-      : tab === "like" ? "Et ole vielä tykännyt yhdestäkään asunnosta näillä suodattimilla."
-      : "Ei hylättyjä asuntoja näillä suodattimilla.";
+      ? (filtered.length ? "<b>All caught up! 🎉</b><br>New flats arrive twice a day." : "<b>No matches.</b><br>Try loosening the filters.")
+      : tab === "like" ? "No liked flats with these filters yet."
+      : "No rejected flats with these filters.";
   }
 
   // Active filters as one-tap-removable chips, so nothing is ever hidden silently.
   function paintChips() {
     var c = [];
     if (F.max != null) c.push(["max", "≤ " + F.max + " €"]);
-    if (F.rooms.length) c.push(["rooms", F.rooms.map(function (r) { return r === 4 ? "4+" : r; }).join(", ") + " h"]);
+    if (F.rooms.length) c.push(["rooms", F.rooms.map(function (r) { return r === 4 ? "4+" : r; }).join(", ") + " rooms"]);
     if (F.area != null) c.push(["area", "≥ " + F.area + " m²"]);
+    if (F.zones.length) c.push(["zones", "✏ " + zonesLabel()]);
     if (F.districts.length) c.push(["districts", F.districts.length > 2 ? F.districts.slice(0, 2).join(", ") + " +" + (F.districts.length - 2) : F.districts.join(", ")]);
-    var FL = { fresh: "viim. 3 pv", util: "sis. komm.", reno: "remontoitu", furn: "kalustettu", photos: "kuvat" };
+    var FL = { fresh: "last 3 days", util: "utilities incl.", reno: "renovated", furn: "furnished", photos: "has photos" };
     F.flags.forEach(function (f) { c.push(["flag:" + f, FL[f] || f]); });
     if (F.q) c.push(["q", "“" + F.q + "”"]);
-    var sortTxt = { new: "uusimmat", cheap: "halvin", ppm: "€/m²", big: "suurin" }[F.sort];
+    var sortTxt = { new: "newest", cheap: "cheapest", ppm: "€/m²", big: "biggest" }[F.sort];
     $("#chips").innerHTML = c.map(function (x) {
       return '<button class="chip" type="button" data-k="' + esc(x[0]) + '">' + esc(x[1]) + ' <b>×</b></button>';
     }).join("") + '<button class="chip sort" type="button" data-k="sort">↕ ' + esc(sortTxt) + "</button>";
@@ -318,7 +343,7 @@
     } else {
       render(true);
     }
-    toast(next === "like" ? "👍 Tallennettu tykättyihin" : next === "discard" ? "👎 Piilotettu" : "Palautettu uusiin", snap);
+    toast(next === "like" ? "👍 Saved to liked" : next === "discard" ? "👎 Rejected" : "Back in New", snap);
   }
 
   // ------------------------------------------------------------- lightbox
@@ -345,14 +370,16 @@
   $("#lbClose").addEventListener("click", closeLB);
 
   // ------------------------------------------------------------------ map
-  var map = null, layer = null;
+  var map = null, layer = null, zoneLayer = null;
   function ensureMap() {
     if (map || typeof L === "undefined") return map;
     map = L.map("mapCanvas", { preferCanvas: true, zoomControl: true }).setView([56.951, 24.113], 12);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19, attribution: "© OpenStreetMap",
     }).addTo(map);
+    zoneLayer = L.layerGroup().addTo(map);
     layer = L.layerGroup().addTo(map);
+    wireDrawing();
     return map;
   }
   var COL = { like: "#16a34a", discard: "#9ca3af", todo: "#2563eb" };
@@ -365,12 +392,17 @@
       "<br><small>" + esc(l.street || "") + "</small>" +
       '<div class="mvote"><button data-v="discard" class="' + (v === "discard" ? "on" : "") + '">👎</button>' +
       '<button data-v="like" class="' + (v === "like" ? "on" : "") + '">👍</button>' +
-      '<a href="' + esc(safeUrl(l.url)) + '" target="_blank" rel="noopener">avaa ↗</a></div></div>';
+      '<a href="' + esc(safeUrl(l.url)) + '" target="_blank" rel="noopener">open ↗</a></div></div>';
   }
   var mapOnly = null;
   function plotMap() {
     if (!ensureMap()) return;
     layer.clearLayers();
+    zoneLayer.clearLayers();
+    F.zones.forEach(function (z) {
+      L.polygon(z, { color: "#2563eb", weight: 2, fillOpacity: 0.08, dashArray: "6 4", interactive: false }).addTo(zoneLayer);
+    });
+    paintDrawBtns();
     var pts = [];
     var src = mapOnly ? [mapOnly] : rows;
     src.forEach(function (l) {
@@ -385,11 +417,98 @@
     });
     var noGeo = src.length - pts.length;
     $("#mapTitle").textContent = mapOnly
-      ? (mapOnly.street || "Sijainti")
-      : pts.length + " asuntoa kartalla" + (noGeo ? " (" + noGeo + " ilman sijaintia)" : "");
+      ? (mapOnly.street || "Location")
+      : pts.length + (pts.length === 1 ? " flat" : " flats") + " on the map" +
+        (noGeo ? " · " + noGeo + " without a location" : "");
+    if (noFit) return;
     if (pts.length === 1) map.setView(pts[0], 16);
     else if (pts.length) map.fitBounds(pts, { padding: [24, 24], maxZoom: 15 });
+    else if (F.zones.length) map.fitBounds([].concat.apply([], F.zones), { padding: [24, 24] });
   }
+  var noFit = false; // keep the view still right after the user draws an area
+
+  // ------------------------------------------------------------ draw area
+  // Press "Draw area", drag a line around any part of the city, let go: the
+  // shape closes itself and becomes a filter. The list, the counts and the
+  // pins then show only flats inside it. Several areas add up; "Clear" drops them.
+  var drawArmed = false, drawPts = null, drawLine = null;
+  function paintDrawBtns() {
+    var b = $("#drawBtn"), c = $("#clearZonesBtn"), h = $("#drawHint");
+    b.textContent = drawArmed ? "Cancel" : F.zones.length ? "✏ Add area" : "✏ Draw area";
+    b.classList.toggle("primary", !drawArmed && !F.zones.length);
+    c.hidden = !F.zones.length || drawArmed;
+    h.hidden = !drawArmed;
+    $("#map").classList.toggle("is-drawing", drawArmed);
+  }
+  function armDraw() {
+    if (!ensureMap()) return;
+    mapOnly = null;
+    drawArmed = true;
+    map.closePopup();
+    map.dragging.disable();
+    if (map.touchZoom) map.touchZoom.disable();
+    if (map.doubleClickZoom) map.doubleClickZoom.disable();
+    paintDrawBtns();
+  }
+  function disarmDraw() {
+    drawArmed = false;
+    drawPts = null;
+    if (drawLine && map) { drawLine.remove(); drawLine = null; }
+    if (map) {
+      map.dragging.enable();
+      if (map.touchZoom) map.touchZoom.enable();
+      if (map.doubleClickZoom) map.doubleClickZoom.enable();
+    }
+    paintDrawBtns();
+  }
+  function finishDraw() {
+    var pts = drawPts;
+    disarmDraw();
+    if (!pts || pts.length < 4) { toast("Drag a line around the area you want"); return; }
+    // at most ~120 points at 5 decimals (about 1 m): plenty for a hand-drawn shape
+    var step = Math.max(1, Math.ceil(pts.length / 120));
+    var ring = pts.filter(function (_, i) { return i % step === 0; }).map(function (p) {
+      return [Math.round(p[0] * 1e5) / 1e5, Math.round(p[1] * 1e5) / 1e5];
+    });
+    F.zones.push(ring);
+    save(LS_FILTERS, F);
+    noFit = true;
+    render();
+    noFit = false;
+    var n = rows.length;
+    toast("Area added · " + n + (n === 1 ? " flat" : " flats") + " inside");
+  }
+  function wireDrawing() {
+    var c = map.getContainer();
+    function toLatLng(e) {
+      var r = c.getBoundingClientRect();
+      return map.containerPointToLatLng(L.point(e.clientX - r.left, e.clientY - r.top));
+    }
+    c.addEventListener("pointerdown", function (e) {
+      if (!drawArmed || !e.isPrimary) return;
+      e.preventDefault();
+      e.stopPropagation();
+      var ll = toLatLng(e);
+      drawPts = [[ll.lat, ll.lng]];
+      drawLine = L.polyline([[ll.lat, ll.lng]], { color: "#2563eb", weight: 3 }).addTo(map);
+      if (c.setPointerCapture) try { c.setPointerCapture(e.pointerId); } catch (err) {}
+    }, true);
+    c.addEventListener("pointermove", function (e) {
+      if (!drawArmed || !drawPts) return;
+      e.preventDefault();
+      var ll = toLatLng(e);
+      var last = drawPts[drawPts.length - 1];
+      if (map.latLngToContainerPoint(last).distanceTo(map.latLngToContainerPoint(ll)) < 6) return;
+      drawPts.push([ll.lat, ll.lng]);
+      drawLine.setLatLngs(drawPts);
+    }, true);
+    c.addEventListener("pointerup", function () { if (drawArmed && drawPts) finishDraw(); }, true);
+    c.addEventListener("pointercancel", function () { if (drawArmed) disarmDraw(); }, true);
+  }
+  $("#drawBtn").addEventListener("click", function () { if (drawArmed) disarmDraw(); else armDraw(); });
+  $("#clearZonesBtn").addEventListener("click", function () {
+    F.zones = []; save(LS_FILTERS, F); render(); toast("Areas cleared");
+  });
   function openMap(one) {
     mapOnly = one || null;
     $("#map").hidden = false;
@@ -397,7 +516,10 @@
     ensureMap();
     setTimeout(function () { if (map) { map.invalidateSize(); plotMap(); } }, 30);
   }
-  function closeMap() { $("#map").hidden = true; document.body.classList.remove("noscroll"); mapOnly = null; }
+  function closeMap() {
+    if (drawArmed) disarmDraw();
+    $("#map").hidden = true; document.body.classList.remove("noscroll"); mapOnly = null;
+  }
   $("#mapClose").addEventListener("click", closeMap);
   $("#mapCanvas").addEventListener("click", function (e) {
     var b = e.target.closest(".mvote button"); if (!b) return;
@@ -406,7 +528,7 @@
     setVerdict(l, next);
     if (map) map.closePopup();
     render(true);
-    toast(next === "like" ? "👍 Tallennettu" : next === "discard" ? "👎 Piilotettu" : "Palautettu uusiin", snap);
+    toast(next === "like" ? "👍 Liked" : next === "discard" ? "👎 Rejected" : "Back in New", snap);
   });
 
   // ---------------------------------------------------------- filter sheet
@@ -435,8 +557,13 @@
     $$("#fRooms button").forEach(function (b) { b.classList.toggle("on", F.rooms.indexOf(+b.dataset.v) >= 0); });
     $$("#fDistricts button").forEach(function (b) { b.classList.toggle("on", F.districts.indexOf(b.dataset.v) >= 0); });
     $$("#fFlags button").forEach(function (b) { b.classList.toggle("on", F.flags.indexOf(b.dataset.v) >= 0); });
+    $("#zoneInfo").textContent = F.zones.length
+      ? "Showing only flats inside your " + zonesLabel() + "."
+      : "Draw one or more areas on the map to search only there.";
+    $("#zoneDraw").textContent = F.zones.length ? "✏ Add another area" : "✏ Draw on map";
+    $("#zoneClear").hidden = !F.zones.length;
     var n = DATA.filter(passes).filter(function (l) { return (verdictOf(l) || "todo") === tab; }).length;
-    $("#applyBtn").textContent = "Näytä " + n + " asuntoa";
+    $("#applyBtn").textContent = "Show " + n + (n === 1 ? " flat" : " flats");
   }
   function changed() { save(LS_FILTERS, F); paintSheet(); render(); }
   function toggleIn(arr, v) { var i = arr.indexOf(v); if (i < 0) arr.push(v); else arr.splice(i, 1); }
@@ -460,20 +587,27 @@
   $("#fQ").addEventListener("input", debounce(function () { F.q = $("#fQ").value.trim(); changed(); }, 300));
   $("#fSort").addEventListener("change", function () { F.sort = $("#fSort").value; changed(); });
   $("#resetBtn").addEventListener("click", function () {
-    F = JSON.parse(JSON.stringify(DEFAULT_F)); changed();
+    F = freshF(); changed();
   });
   function openSheet(focus) {
     paintSheet(); sheet.hidden = false; document.body.classList.add("noscroll");
     if (focus) setTimeout(function () { var el = $(focus); if (el) el.scrollIntoView({ block: "center" }); }, 50);
   }
   $("#filterBtn").addEventListener("click", function () { openSheet(); });
+  function closeSheet() { sheet.hidden = true; document.body.classList.remove("noscroll"); }
+  $("#zoneDraw").addEventListener("click", function () {
+    closeSheet();
+    openMap(null);
+    setTimeout(armDraw, 80);
+  });
+  $("#zoneClear").addEventListener("click", function () { F.zones = []; changed(); });
 
   $("#chips").addEventListener("click", function (e) {
     var c = e.target.closest(".chip"); if (!c) return;
     var k = c.dataset.k;
     if (k === "sort") { openSheet("#fSort"); return; }
     if (k.indexOf("flag:") === 0) toggleIn(F.flags, k.slice(5));
-    else if (k === "rooms" || k === "districts") F[k] = [];
+    else if (k === "rooms" || k === "districts" || k === "zones") F[k] = [];
     else if (k === "q") F.q = "";
     else F[k] = null;
     changed();
@@ -522,7 +656,7 @@
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape") {
       if (!lb.hidden) closeLB();
-      else if (!$("#map").hidden) closeMap();
+      else if (!$("#map").hidden) { if (drawArmed) disarmDraw(); else closeMap(); }
       else if (!sheet.hidden) { sheet.hidden = true; document.body.classList.remove("noscroll"); }
     }
     if (!lb.hidden && (e.key === "ArrowRight" || e.key === "ArrowLeft")) {
@@ -538,7 +672,7 @@
     a.download = "user-state.json";
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 1500);
-    toast("Varmuuskopio ladattu");
+    toast("Backup downloaded");
   });
   $("#importBtn").addEventListener("click", function () {
     var inp = document.createElement("input");
@@ -553,8 +687,8 @@
           for (var id in d.pile || {}) if (!pile[id]) { pile[id] = d.pile[id]; cleared.delete(id); n++; }
           (d.visited || []).forEach(function (i) { visited.add(i); });
           save(LS_SEEN, Array.from(visited)); persist(); render();
-          toast(n + " valintaa palautettu");
-        } catch (err) { toast("Tiedostoa ei voitu lukea"); }
+          toast(n + (n === 1 ? " vote" : " votes") + " restored");
+        } catch (err) { toast("Could not read that file"); }
       };
       r.readAsText(f);
     };

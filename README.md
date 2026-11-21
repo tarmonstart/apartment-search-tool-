@@ -40,26 +40,31 @@ free, with your PC switched off.
 
 - **Double-click `serve.ps1`** (or `node serve.js`). It prints an address like
   `http://192.168.x.x:8877` — open that on the phone, same Wi-Fi.
-- The report is built for the phone first: big 👍 / 👎 buttons, swipeable photos, and
-  all filters in one bottom sheet.
+- The report is built for the phone first: big 👍 / 👎 buttons, swipeable photos, all
+  filters in one bottom sheet, and areas you draw on the map with a finger.
 - Votes made on the phone save **straight to `state/user-state.json`** through the
   server; the footer says so when it is active.
 - LAN only, no auth — don't port-forward it.
 
 ## Using the report
 
-- **Three tabs.** *Uudet* holds every flat you have not judged yet. **👍** moves a flat
-  to the liked pile, **👎** hides it in the rejected pile. A judged flat never shows up
-  in *Uudet* again — not even when it is re-posted, or posted on another site (see
-  below). Tap the active button again to send a flat back to *Uudet*; every vote can be
-  undone from the toast that pops up.
-- **Suodata** opens one sheet with everything there is: max price (quick presets or any
-  number), rooms, minimum size, districts, "only from the last 3 days", utilities
-  included, renovated, furnished, has photos, a free-text search and the sort order.
-  Filters are remembered, and each active one shows as a chip under the tabs — tap it
-  to remove it. Nothing is ever hidden silently.
+- **Three tabs.** *New* holds every flat you have not judged yet. **👍 Like** moves a
+  flat to the liked pile, **👎 Nope** hides it in the rejected pile. A judged flat never
+  shows up in *New* again — not even when it is re-posted, or posted on another site
+  (see below). Tap the active button again to send a flat back to *New*; every vote can
+  be undone from the toast that pops up.
+- **Filters** opens one sheet with everything there is: max rent (quick presets or any
+  number), rooms, minimum size, **an area drawn on the map**, districts, "last 3 days",
+  utilities included, renovated, furnished, has photos, a free-text search and the sort
+  order. Filters are remembered, and each active one shows as a chip under the tabs —
+  tap it to remove it. Nothing is ever hidden silently.
+- **Draw an area**: *Filters → Draw on map*, or **✏ Draw area** on the map. Drag one
+  finger (or the mouse) around the part of the city you want and let go; the shape
+  closes itself and from then on the list, the counts and the pins show only flats
+  inside it. Draw more areas to add them up; *Clear areas* (or the chip's ×) removes
+  them. Flats without a known position are left out while an area is active.
 - **Photos** swipe inside the card; tap one for the full-screen gallery.
-- **📍 address** shows that flat on the map; **🗺️ Kartta** shows every flat in the
+- **📍 address** shows that flat on the map; **🗺️ Map** shows every flat in the
   current tab and filters (blue = new, green = liked, grey = rejected) and you can vote
   straight from a pin.
 - Each card links to **every site** the flat was found on.
@@ -67,8 +72,8 @@ free, with your PC switched off.
 ### Where your votes are kept
 
 On the hosted page (GitHub Pages) votes live in that browser's storage, which survives
-new builds. They are per device: **Varmuuskopioi valinnat** in the footer downloads them,
-**Palauta varmuuskopio** merges them into another device (it never wipes anything).
+new builds. They are per device: **Back up votes** in the footer downloads them,
+**Restore a backup** merges them into another device (it never wipes anything).
 
 Served from your own PC with `serve.js`, every vote also goes straight to
 `state/user-state.json`, and each run keeps a dated snapshot in `state/backups/history/`.

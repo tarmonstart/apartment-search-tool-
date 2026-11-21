@@ -343,6 +343,26 @@ a { color: var(--accent); }
   font-weight: 600;
 }
 .map-canvas { flex: 1; }
+.map-head { gap: 6px 8px; flex-wrap: wrap; }
+.map-acts { display: flex; gap: 6px; align-items: center; margin-left: auto; }
+.map-acts .btn { white-space: nowrap; padding: 6px 12px; min-height: 38px; font-size: 14px; }
+/* the count gets its own line on a phone, so the buttons never wrap */
+.map-head #mapTitle { order: 2; flex-basis: 100%; font-size: 13px; font-weight: 500; color: var(--muted); }
+@media (min-width: 700px) {
+  .map-head #mapTitle { order: 0; flex-basis: auto; font-size: 15px; color: var(--ink); }
+}
+.draw-hint {
+  background: var(--accent);
+  color: var(--accent-ink);
+  text-align: center;
+  padding: 8px 12px;
+  font-weight: 600;
+  font-size: 14px;
+}
+/* while drawing, the map must not pan or zoom under the finger */
+.mapview.is-drawing .map-canvas { cursor: crosshair; touch-action: none; }
+.fnote { margin: 0; color: var(--muted); font-size: 13px; }
+.zone-acts { display: flex; gap: 8px; }
 .mpop { display: grid; gap: 4px; min-width: 180px; font: 14px/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
 .mpop img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 8px; }
 .mvote { display: flex; gap: 6px; align-items: center; margin-top: 4px; }

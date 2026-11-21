@@ -81,8 +81,8 @@ On GitHub Pages the page is static — there is no server to write to — so ver
 in **that browser's localStorage**. That is durable (it survives closing the browser and
 new deploys), but it is **per device**: what you tag on the phone will not appear on the PC.
 
-To move them: **Varmuuskopioi valinnat** (footer) on one device, **Palauta varmuuskopio** on
-the other. Restoring merges, it never wipes.
+To move them: **Back up votes** (footer) on one device, **Restore a backup** on the
+other. Restoring merges, it never wipes.
 
 If you want them to sync properly, the repo must be **private** and you must commit
 `state/user-state.json` deliberately (delete those two lines from `.gitignore`). Then every
