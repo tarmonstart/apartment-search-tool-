@@ -44,14 +44,16 @@
   "pplv": {
     "enabled": true,
     "categoryId": 3811,
-    "regions": [801, 807, 811, 813, 834, 837, 846],
-    "_note": "3811 = apartments. Region ids are pp.lv Rīga districts (801 Avoti · 807 Brasa · 811 Centrs · 813 Dārzciems · 834 Pētersala-Andrejsala · 837 Purvciems · 846 Teika). Each returns its ~20 newest rentals; pp.lv exposes no deeper paging."
+    "regions": [85],
+    "maxPages": 25,
+    "_note": "3811 = apartments. Region 85 = the whole of Rīga, paged 20 at a time. District ids (811 Centrs, 801 Avoti …) narrow it."
   },
 
   "varianti": {
     "enabled": true,
     "districts": [],
-    "maxPages": 8,
+    "pageSize": 40,
+    "maxPages": 12,
     "_note": "varianti.lv JSON API (also the data behind cityreal.lv). Empty districts = the whole of Rīga; ids from POST api.varianti.lv/rest/address/district (1 = Centrs) to narrow."
   },
 
