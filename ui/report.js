@@ -4,10 +4,14 @@
 // and the image-rule helper (imgUrl). No frameworks.
 //
 // The model is deliberately simple:
-//   * every flat is either untouched, liked (👍) or rejected (👎)
-//   * three tabs show exactly those three piles — judging a flat moves it out
-//     of "New", so the same flat never has to be looked at twice
+//   * every flat is unviewed, viewed, liked (👍) or disliked (👎)
+//   * four tabs show exactly those four piles. A flat becomes "viewed" when
+//     you open it (its photos, the original ad, or its spot on the map), and
+//     judging it moves it out of both, so nothing has to be looked at twice
 //   * a handful of filters, all in one sheet, remembered between visits
+//   * signed in with Google (when Firebase is configured), votes and views
+//     live in your account and follow you between devices; otherwise they
+//     stay in this browser
 //
 // Verdict storage is compatible with the earlier like/maybe/discard report
 // (same localStorage keys, same state-file shape); an old "maybe" counts as 👍.
@@ -56,19 +60,41 @@
   function restore(snap) {
     for (var i in snap) {
       if (snap[i]) { pile[i] = snap[i]; cleared.delete(i); } else { delete pile[i]; cleared.add(i); }
+      cloudPile(i, snap[i] || "");
     }
     persist();
   }
   function setVerdict(l, v) {
     idsOf(l).forEach(function (i) {
       if (v) { pile[i] = v; cleared.delete(i); } else { delete pile[i]; cleared.add(i); }
+      cloudPile(i, v || "");
     });
     persist();
   }
+  function seenOf(l) {
+    var ids = idsOf(l);
+    for (var i = 0; i < ids.length; i++) if (visited.has(ids[i])) return true;
+    return false;
+  }
+  // unviewed · viewed · like · discard: the four tabs
+  function stateOf(l) { return verdictOf(l) || (seenOf(l) ? "seen" : "todo"); }
+
+  // Opening a flat marks it viewed. It stays where it is in the list you are
+  // looking at (keepHere) until you switch tabs, so nothing jumps mid-scroll.
+  var keepHere = new Set();
   function markSeen(l) {
+    if (!l) return;
     var ch = false;
-    idsOf(l).forEach(function (i) { if (!visited.has(i)) { visited.add(i); ch = true; } });
-    if (ch) { save(LS_SEEN, Array.from(visited)); pushState(); }
+    idsOf(l).forEach(function (i) { if (!visited.has(i)) { visited.add(i); cloudSeen(i, true); ch = true; } });
+    if (!ch) return;
+    if (tab === "todo") keepHere.add(l.id);
+    save(LS_SEEN, Array.from(visited)); pushState();
+    // after the click has done its job (a link must still open)
+    setTimeout(function () { repaintCard(l); paintCountsOnly(); }, 0);
+  }
+  function markUnseen(l) {
+    idsOf(l).forEach(function (i) { if (visited.has(i)) { visited.delete(i); cloudSeen(i, false); } });
+    save(LS_SEEN, Array.from(visited)); pushState();
   }
   function stateObj() { return { pile: pile, visited: Array.from(visited), cleared: Array.from(cleared) }; }
   function persist() {
@@ -104,7 +130,7 @@
   var F = Object.assign(freshF(), load(LS_FILTERS, {}) || {});
   if (!Array.isArray(F.zones)) F.zones = [];
   var tab = load(LS_TAB, "todo");
-  if (["todo", "like", "discard"].indexOf(tab) < 0) tab = "todo";
+  if (["todo", "seen", "like", "discard"].indexOf(tab) < 0) tab = "todo";
 
   function fold(s) {
     return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
@@ -223,11 +249,12 @@
     if (l.area != null) facts.push(l.area + " m²");
     if (l.floor) facts.push("floor " + esc(l.floor));
 
-    return '<article class="card' + (v ? " is-" + v : "") + '" data-id="' + esc(l.id) + '">' +
+    var seen = !v && seenOf(l);
+    return '<article class="card' + (v ? " is-" + v : "") + (seen ? " is-seen" : "") + '" data-id="' + esc(l.id) + '">' +
       '<div class="gal" data-n="' + ps.length + '">' +
         '<div class="gal-track">' + gallery + "</div>" +
         (ps.length > 1 ? '<span class="gal-count">1/' + ps.length + "</span>" : "") +
-        (l.isNew ? '<span class="pill new">UUSI</span>' : "") +
+        (seen ? '<span class="pill seen">👁 VIEWED</span>' : l.isNew ? '<span class="pill new">NEW</span>' : "") +
         (nSites > 1 ? '<span class="pill multi" title="The same flat on several sites">' + nSites + " sites</span>" : "") +
       "</div>" +
       '<div class="info">' +
@@ -241,7 +268,9 @@
         (l.description ? '<p class="desc">' + esc(l.description) + "</p>" : "") +
         '<div class="links">' + links.map(function (a) {
           return '<a href="' + esc(safeUrl(a.url)) + '" target="_blank" rel="noopener">' + esc(a.label) + " ↗</a>";
-        }).join("") + "</div>" +
+        }).join("") +
+          (v ? "" : '<button class="seentoggle" type="button">' + (seen ? "mark unviewed" : "mark viewed") + "</button>") +
+        "</div>" +
       "</div>" +
       '<div class="vote">' +
         '<button class="no' + (v === "discard" ? " on" : "") + '" type="button" data-v="discard" aria-label="Reject">👎<span>Nope</span></button>' +
@@ -259,15 +288,15 @@
     drawn = end;
   }
 
-  var counts = { todo: 0, like: 0, discard: 0 };
+  var counts = { todo: 0, seen: 0, like: 0, discard: 0 };
   function render(keepScroll) {
     var all = DATA.filter(passes);
-    counts = { todo: 0, like: 0, discard: 0 };
+    counts = { todo: 0, seen: 0, like: 0, discard: 0 };
     var mine = [];
     all.forEach(function (l) {
-      var v = verdictOf(l) || "todo";
-      counts[v]++;
-      if (v === tab) mine.push(l);
+      var st = stateOf(l);
+      counts[st]++;
+      if (st === tab || (tab === "todo" && st === "seen" && keepHere.has(l.id))) mine.push(l);
     });
     mine.sort(SORTS[F.sort] || SORTS.new);
     rows = mine;
@@ -285,8 +314,23 @@
   }
   var filtered = [];
 
+  // after a flat is opened: move one count from Unviewed to Viewed, no re-render
+  function paintCountsOnly() {
+    counts = { todo: 0, seen: 0, like: 0, discard: 0 };
+    filtered.forEach(function (l) { counts[stateOf(l)]++; });
+    paintCounts();
+  }
+  function repaintCard(l) {
+    var el = listEl.querySelector('.card[data-id="' + (window.CSS && CSS.escape ? CSS.escape(l.id) : l.id) + '"]');
+    if (!el) return;
+    var tr = el.querySelector(".gal-track"), x = tr ? tr.scrollLeft : 0;
+    el.outerHTML = cardHTML(l);
+    var fresh = listEl.querySelector('.card[data-id="' + (window.CSS && CSS.escape ? CSS.escape(l.id) : l.id) + '"] .gal-track');
+    if (fresh) fresh.scrollLeft = x;
+  }
   function paintCounts() {
     $("#nTodo").textContent = counts.todo;
+    $("#nSeen").textContent = counts.seen;
     $("#nLike").textContent = counts.like;
     $("#nDiscard").textContent = counts.discard;
     $$(".tab").forEach(function (t) { t.classList.toggle("on", t.dataset.tab === tab); });
@@ -299,8 +343,9 @@
     e.hidden = false;
     e.innerHTML = tab === "todo"
       ? (filtered.length ? "<b>All caught up! 🎉</b><br>New flats arrive twice a day." : "<b>No matches.</b><br>Try loosening the filters.")
+      : tab === "seen" ? "Nothing viewed but undecided with these filters. A flat lands here when you open its photos, its ad or its map pin."
       : tab === "like" ? "No liked flats with these filters yet."
-      : "No rejected flats with these filters.";
+      : "No disliked flats with these filters.";
   }
 
   // Active filters as one-tap-removable chips, so nothing is ever hidden silently.
@@ -336,14 +381,14 @@
     var snap = snapshot(l), cur = verdictOf(l);
     var next = cur === v ? null : v; // tapping the active verdict clears it
     setVerdict(l, next);
-    var leaves = (next || "todo") !== tab;
+    var leaves = stateOf(l) !== tab;
     if (leaves) {
       card.classList.add(next === "like" ? "fly-right" : next === "discard" ? "fly-left" : "fly-up");
       setTimeout(function () { render(true); }, 260);
     } else {
       render(true);
     }
-    toast(next === "like" ? "👍 Saved to liked" : next === "discard" ? "👎 Rejected" : "Back in New", snap);
+    toast(next === "like" ? "👍 Saved to liked" : next === "discard" ? "👎 Disliked" : "Back in " + (seenOf(l) ? "Viewed" : "Unviewed"), snap);
   }
 
   // ------------------------------------------------------------- lightbox
@@ -352,6 +397,7 @@
     lbL = l;
     var ps = photos(l);
     if (!ps.length) return;
+    markSeen(l);
     lbTrack.innerHTML = ps.map(function (p, k) {
       return '<figure><img ' + (Math.abs(k - i) > 1 ? 'loading="lazy" ' : "") + 'src="' + esc(imgUrl(l.img.k, p, "full")) + '" alt="" decoding="async"></figure>';
     }).join("");
@@ -382,7 +428,7 @@
     wireDrawing();
     return map;
   }
-  var COL = { like: "#16a34a", discard: "#9ca3af", todo: "#2563eb" };
+  var COL = { like: "#16a34a", discard: "#9ca3af", todo: "#2563eb", seen: "#7c3aed" };
   function popupHTML(l) {
     var ps = photos(l), v = verdictOf(l);
     return '<div class="mpop" data-id="' + esc(l.id) + '">' +
@@ -407,11 +453,12 @@
     var src = mapOnly ? [mapOnly] : rows;
     src.forEach(function (l) {
       if (l.lat == null) return;
-      var v = verdictOf(l) || "todo";
+      var v = stateOf(l);
       var m = L.circleMarker([l.lat, l.lon], {
         radius: mapOnly ? 10 : 7, weight: 2, color: "#fff", fillColor: COL[v], fillOpacity: 0.95,
       });
       m.bindPopup(function () { return popupHTML(l); }, { maxWidth: 240 });
+      m.on("popupopen", function () { markSeen(l); });
       m.addTo(layer);
       pts.push([l.lat, l.lon]);
     });
@@ -528,7 +575,7 @@
     setVerdict(l, next);
     if (map) map.closePopup();
     render(true);
-    toast(next === "like" ? "👍 Liked" : next === "discard" ? "👎 Rejected" : "Back in New", snap);
+    toast(next === "like" ? "👍 Liked" : next === "discard" ? "👎 Disliked" : "Back in " + (seenOf(l) ? "Viewed" : "Unviewed"), snap);
   });
 
   // ---------------------------------------------------------- filter sheet
@@ -562,7 +609,7 @@
       : "Draw one or more areas on the map to search only there.";
     $("#zoneDraw").textContent = F.zones.length ? "✏ Add another area" : "✏ Draw on map";
     $("#zoneClear").hidden = !F.zones.length;
-    var n = DATA.filter(passes).filter(function (l) { return (verdictOf(l) || "todo") === tab; }).length;
+    var n = DATA.filter(passes).filter(function (l) { return stateOf(l) === tab; }).length;
     $("#applyBtn").textContent = "Show " + n + (n === 1 ? " flat" : " flats");
   }
   function changed() { save(LS_FILTERS, F); paintSheet(); render(); }
@@ -616,7 +663,7 @@
   // ----------------------------------------------------------------- tabs
   $$(".tab").forEach(function (t) {
     t.addEventListener("click", function () {
-      tab = t.dataset.tab; save(LS_TAB, tab); render(); window.scrollTo(0, 0);
+      tab = t.dataset.tab; save(LS_TAB, tab); keepHere.clear(); render(); window.scrollTo(0, 0);
     });
   });
 
@@ -626,7 +673,12 @@
     var l = byId[card.dataset.id];
     var vb = e.target.closest(".vote button");
     if (vb) { vote(card, vb.dataset.v); return; }
-    if (e.target.closest(".addr")) { if (l && l.lat != null) openMap(l); return; }
+    if (e.target.closest(".addr")) { if (l && l.lat != null) { markSeen(l); openMap(l); } return; }
+    if (e.target.closest(".seentoggle")) {
+      if (seenOf(l)) { markUnseen(l); keepHere.delete(l.id); render(true); toast("Back in Unviewed"); }
+      else markSeen(l);
+      return;
+    }
     var a = e.target.closest(".links a");
     if (a) { markSeen(l); return; }
     var img = e.target.closest(".gal img");
@@ -695,6 +747,124 @@
     inp.click();
   });
 
+  // ----------------------------------------------------------- cloud sync
+  // With META.firebase set (config.json → "firebase"), a "Sign in" button
+  // appears. Signed in with Google, votes and views live in one Firestore
+  // document per person, users/{uid}:
+  //   pile: { listingId: "like" | "discard" | "" }   ("" = cleared)
+  //   seen: { listingId: true | false }
+  // Every device that signs in to the same account reads and writes that one
+  // document live, so the browser is only a cache. Without Firebase config the
+  // page simply keeps using this browser's storage, as before.
+  var FB = META.firebase || null;
+  var cloud = { user: null, ref: null, unsub: null };
+  var outPile = {}, outSeen = {}, outTimer = null;
+  function cloudPile(id, v) { if (!cloud.ref) return; outPile[id] = v; flushSoon(); }
+  function cloudSeen(id, v) { if (!cloud.ref) return; outSeen[id] = v; flushSoon(); }
+  function flushSoon() { clearTimeout(outTimer); outTimer = setTimeout(flushCloud, 500); }
+  function flushCloud() {
+    if (!cloud.ref) return;
+    var body = { updated: firebase.firestore.FieldValue.serverTimestamp() };
+    if (Object.keys(outPile).length) body.pile = outPile;
+    if (Object.keys(outSeen).length) body.seen = outSeen;
+    outPile = {}; outSeen = {};
+    // merge:true merges the nested maps key by key, so two devices never
+    // overwrite each other's other votes
+    cloud.ref.set(body, { merge: true }).catch(function (e) { paintSync("Sync error: " + (e && e.code || e)); });
+  }
+  // the cloud copy wins: it is what every device agrees on
+  function applyRemote(d) {
+    var changed = false, id;
+    var rp = (d && d.pile) || {}, rs = (d && d.seen) || {};
+    for (id in rp) {
+      var v = rp[id];
+      if (v) { if (pile[id] !== v) { pile[id] = v; cleared.delete(id); changed = true; } }
+      else if (pile[id]) { delete pile[id]; cleared.add(id); changed = true; }
+    }
+    for (id in rs) {
+      if (rs[id] && !visited.has(id)) { visited.add(id); changed = true; }
+      else if (!rs[id] && visited.has(id)) { visited.delete(id); changed = true; }
+    }
+    if (changed) {
+      save(LS_PILE, pile); save(LS_CLEARED, Array.from(cleared)); save(LS_SEEN, Array.from(visited));
+      render(true);
+    }
+  }
+  function paintSync(msg) {
+    var b = $("#authBtn");
+    if (!b) return;
+    b.hidden = !FB;
+    if (cloud.user) {
+      b.textContent = "☁ " + ((cloud.user.displayName || cloud.user.email || "Signed in").split(" ")[0]);
+      b.title = "Synced to " + (cloud.user.email || "your account") + " · tap to sign out";
+      $("#saveNote").textContent = msg || ("Your votes and views are saved to your Google account (" +
+        (cloud.user.email || "signed in") + ") and sync between your devices.");
+    } else {
+      b.textContent = "Sign in";
+      b.title = "Sign in with Google to keep your votes in your account";
+      if (msg) $("#saveNote").textContent = msg; else paintSaveNote();
+    }
+  }
+  function startCloud(user) {
+    cloud.user = user;
+    cloud.ref = firebase.firestore().collection("users").doc(user.uid);
+    paintSync("Syncing…");
+    // First, hand the cloud anything this browser knew that the account did
+    // not (e.g. votes made before signing in). Then follow it live.
+    cloud.ref.get().then(function (snap) {
+      var d = snap.exists ? snap.data() : {};
+      var rp = d.pile || {}, rs = d.seen || {}, up = { pile: {}, seen: {} }, n = 0;
+      Object.keys(pile).forEach(function (id) { if (!(id in rp)) { up.pile[id] = pile[id] === "maybe" ? "like" : pile[id]; n++; } });
+      visited.forEach(function (id) { if (!(id in rs)) { up.seen[id] = true; n++; } });
+      return n ? cloud.ref.set(up, { merge: true }) : null;
+    }).then(function () {
+      cloud.unsub = cloud.ref.onSnapshot(function (snap) {
+        applyRemote(snap.exists ? snap.data() : {});
+        paintSync();
+      }, function (e) { paintSync("Sync error: " + (e && e.code || e)); });
+    }).catch(function (e) { paintSync("Sync error: " + (e && e.code || e)); });
+  }
+  function stopCloud() {
+    if (cloud.unsub) cloud.unsub();
+    cloud = { user: null, ref: null, unsub: null };
+    paintSync();
+  }
+  function loadScript(src) {
+    return new Promise(function (res, rej) {
+      var sc = document.createElement("script");
+      sc.src = src; sc.onload = res; sc.onerror = rej;
+      document.head.appendChild(sc);
+    });
+  }
+  function initCloud() {
+    if (!FB || !FB.apiKey) return;
+    var v = "https://www.gstatic.com/firebasejs/10.12.2/";
+    $("#authBtn").hidden = false;
+    loadScript(v + "firebase-app-compat.js")
+      .then(function () { return Promise.all([loadScript(v + "firebase-auth-compat.js"), loadScript(v + "firebase-firestore-compat.js")]); })
+      .then(function () {
+        firebase.initializeApp(FB);
+        firebase.auth().onAuthStateChanged(function (u) { if (u) startCloud(u); else stopCloud(); });
+        // a sign-in that had to fall back to a full-page redirect lands here
+        firebase.auth().getRedirectResult().catch(function () {});
+      })
+      .catch(function () { paintSync("Could not load sign-in (offline?). Votes are kept in this browser for now."); });
+    $("#authBtn").addEventListener("click", function () {
+      if (typeof firebase === "undefined") return;
+      if (cloud.user) {
+        if (confirm("Signed in as " + (cloud.user.email || "you") + ". Sign out on this device?")) firebase.auth().signOut();
+        return;
+      }
+      var prov = new firebase.auth.GoogleAuthProvider();
+      firebase.auth().signInWithPopup(prov).catch(function (e) {
+        if (e && (e.code === "auth/popup-blocked" || e.code === "auth/operation-not-supported-in-this-environment"))
+          firebase.auth().signInWithRedirect(prov);
+        else if (e && e.code !== "auth/popup-closed-by-user" && e.code !== "auth/cancelled-popup-request")
+          toast("Sign-in failed: " + (e.message || e.code));
+      });
+    });
+  }
+
   // ----------------------------------------------------------------- boot
   buildSheet();
   render();
@@ -715,6 +885,7 @@
     fetch("/api/ping").then(function (r) { api = r.ok; paintSaveNote(); }).catch(function () { api = false; paintSaveNote(); });
   }
   paintSaveNote();
+  initCloud();
 
   // A tab left open picks up the next build by itself, when it is not in use.
   document.addEventListener("visibilitychange", function () {

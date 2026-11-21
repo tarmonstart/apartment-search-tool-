@@ -48,11 +48,13 @@ free, with your PC switched off.
 
 ## Using the report
 
-- **Three tabs.** *New* holds every flat you have not judged yet. **👍 Like** moves a
-  flat to the liked pile, **👎 Nope** hides it in the rejected pile. A judged flat never
-  shows up in *New* again — not even when it is re-posted, or posted on another site
-  (see below). Tap the active button again to send a flat back to *New*; every vote can
-  be undone from the toast that pops up.
+- **Four tabs: Unviewed · Viewed · 👍 Liked · 👎 Disliked.** A flat becomes *viewed*
+  when you open it — its photos, the original ad, or its pin on the map — and stays put
+  in the list you are looking at until you switch tabs. **👍 Like** / **👎 Nope** move
+  it to those piles; a judged flat never shows up in Unviewed or Viewed again — not even
+  when it is re-posted, or posted on another site (see below). Tap the active button
+  again to un-judge it; every vote can be undone from the toast that pops up, and
+  *mark viewed / mark unviewed* on a card flips that by hand.
 - **Filters** opens one sheet with everything there is: max rent (quick presets or any
   number), rooms, minimum size, **an area drawn on the map**, districts, "last 3 days",
   utilities included, renovated, furnished, has photos, a free-text search and the sort
@@ -71,9 +73,40 @@ free, with your PC switched off.
 
 ### Where your votes are kept
 
-On the hosted page (GitHub Pages) votes live in that browser's storage, which survives
-new builds. They are per device: **Back up votes** in the footer downloads them,
-**Restore a backup** merges them into another device (it never wipes anything).
+**Signed in (recommended):** with Firebase set up (below), a **Sign in** button appears
+at the top. Sign in with Google and your votes and views live in your account — one
+small Firestore document — and sync live between phone and laptop. The browser only
+keeps a cache. Anything the browser already knew is uploaded on first sign-in.
+
+**Not signed in:** votes live in that browser's storage, which survives new builds but is
+per device: **Back up votes** in the footer downloads them, **Restore a backup** merges
+them into another device (it never wipes anything).
+
+### Sign in and sync — one-time Firebase setup (free, ~10 minutes)
+
+1. Go to <https://console.firebase.google.com>, **Add project** (any name, Analytics off).
+2. **Build → Authentication → Get started → Sign-in method → Google → Enable → Save.**
+3. Authentication → **Settings → Authorized domains → Add domain:** `tarmonstart.github.io`.
+4. **Build → Firestore Database → Create database** (production mode, an EU location).
+   Then the **Rules** tab, replace everything with this and **Publish**:
+
+   ```
+   rules_version = '2';
+   service cloud.firestore {
+     match /databases/{database}/documents {
+       match /users/{uid} {
+         allow read, write: if request.auth != null && request.auth.uid == uid;
+       }
+     }
+   }
+   ```
+
+   Each person can only ever read and write their own document.
+5. **Project settings (⚙) → Your apps → Web (</>) → Register app** (no hosting). Copy
+   `apiKey`, `authDomain`, `projectId` and `appId` from the config it shows into the
+   `firebase` block of `config.json`. These are public identifiers, not secrets — the
+   rules in step 4 are what protect the data.
+6. Commit; the next build (or *Actions → Run workflow*) shows the **Sign in** button.
 
 Served from your own PC with `serve.js`, every vote also goes straight to
 `state/user-state.json`, and each run keeps a dated snapshot in `state/backups/history/`.

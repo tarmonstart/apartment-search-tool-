@@ -97,6 +97,14 @@
     "_maxPriceRatio": "Above this price ratio, the gap counts as evidence the posts are NOT the same flat."
   },
 
+  "firebase": {
+    "apiKey": "",
+    "authDomain": "",
+    "projectId": "",
+    "appId": "",
+    "_note": "Optional. Fill these in (Firebase console → Project settings → Your apps → Web app config) to get a 'Sign in' button: votes and views then live in your Google account and sync between devices. These values are public web-app identifiers, not secrets. Setup steps: README, 'Sign in and sync'."
+  },
+
   "requestDelayMs": 600,
   "concurrency": 4,
   "_politeness": "requestDelayMs is the pause between requests to the same site, concurrency the number in flight. These sites are free and public — do not raise them much."

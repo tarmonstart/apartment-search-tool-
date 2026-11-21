@@ -271,6 +271,15 @@ async function collectAll() {
     photos,
     preferredRooms: CONFIG.preferredRooms,
     sources: sourcesLine,
+    // public web-app config (not a secret); only passed on once it is filled in
+    firebase: CONFIG.firebase && CONFIG.firebase.apiKey
+      ? {
+          apiKey: CONFIG.firebase.apiKey,
+          authDomain: CONFIG.firebase.authDomain,
+          projectId: CONFIG.firebase.projectId,
+          appId: CONFIG.firebase.appId,
+        }
+      : null,
   };
 
   if (!list.length) {

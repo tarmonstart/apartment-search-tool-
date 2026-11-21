@@ -98,7 +98,7 @@ a { color: var(--accent); }
 .top-acts { display: flex; gap: 8px; }
 .tabs {
   display: grid;
-  grid-template-columns: 1.3fr 1fr 1fr;
+  grid-template-columns: repeat(4, 1fr);
   gap: 4px;
   background: var(--soft);
   border-radius: 12px;
@@ -114,7 +114,9 @@ a { color: var(--accent); }
   font-weight: 600;
   color: var(--muted);
 }
-.tab b { font-weight: 700; margin-left: 2px; }
+.tab { display: flex; flex-direction: column; align-items: center; line-height: 1.15; gap: 1px; font-size: 13px; }
+.tab b { font-weight: 700; font-size: 15px; }
+@media (min-width: 700px) { .tab { flex-direction: row; justify-content: center; gap: 6px; font-size: 14px; } }
 .tab.on { background: var(--card); color: var(--ink); box-shadow: var(--shadow); }
 .chips {
   display: flex;
@@ -194,6 +196,9 @@ a { color: var(--accent); }
 }
 .gal-count { right: 10px; bottom: 10px; background: rgba(0, 0, 0, .55); color: #fff; }
 .pill.new { left: 10px; top: 10px; background: var(--accent); color: #fff; }
+.pill.seen { left: 10px; top: 10px; background: #7c3aed; color: #fff; }
+.card.is-seen .info { opacity: .85; }
+.seentoggle { border: 0; background: none; padding: 0; color: var(--muted); font-size: 13px; text-decoration: underline; margin-left: auto; }
 .pill.multi { right: 10px; top: 10px; background: rgba(0, 0, 0, .55); color: #fff; }
 
 .info { padding: 12px 14px 4px; display: grid; gap: 6px; }
