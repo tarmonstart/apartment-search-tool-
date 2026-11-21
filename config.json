@@ -71,6 +71,12 @@
     "_note": "arcoreal.lv, server-rendered HTML. 'visas-vietas' = all of Rīga; district slugs like 'centrs' narrow it. Card data only: one photo, no dates."
   },
 
+  "reklama": {
+    "enabled": true,
+    "maxPages": 60,
+    "_note": "reklama.lv classifieds, Rīga rentals, 20 per page. Survivors of the basic filters get a deep read for district, full text and gallery."
+  },
+
   "geocode": {
     "enabled": true,
     "maxPerRun": 60,

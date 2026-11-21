@@ -30,6 +30,7 @@ const pplv = require("./lib/sources/pplv");
 const varianti = require("./lib/sources/varianti");
 const latio = require("./lib/sources/latio");
 const arcoreal = require("./lib/sources/arcoreal");
+const reklama = require("./lib/sources/reklama");
 const { dedupe } = require("./lib/dedupe");
 const { geocodeAll } = require("./lib/geocode");
 const { loadUserState, saveUserState, spreadVerdicts, countVerdicts } = require("./lib/state");
@@ -103,9 +104,13 @@ function loadSeen() {
 }
 function saveSeen(seen, ids) {
   const now = new Date().toISOString();
+  const live = new Set(ids);
   for (const id of ids) if (!seen[id]) seen[id] = now;
+  // Forget only ads that are gone. Pruning by age alone made any flat listed
+  // for more than 90 days drop out of memory and come back as "new".
   const cutoff = Date.now() - 90 * 24 * 3600 * 1000;
-  for (const [id, ts] of Object.entries(seen)) if (Date.parse(ts) < cutoff) delete seen[id];
+  for (const [id, ts] of Object.entries(seen))
+    if (!live.has(id) && Date.parse(ts) < cutoff) delete seen[id];
   fs.mkdirSync(STATE_DIR, { recursive: true });
   fs.writeFileSync(SEEN_FILE, JSON.stringify(seen));
 }
@@ -140,6 +145,7 @@ async function collectAll() {
     ["varianti.lv", varianti, CONFIG.varianti],
     ["latio.lv", latio, CONFIG.latio],
     ["arcoreal.lv", arcoreal, CONFIG.arcoreal],
+    ["reklama.lv", reklama, CONFIG.reklama],
   ];
   for (const [name, mod, cfg] of sources)
     if (cfg && cfg.enabled) await collectOne(name, mod, cfg, all, tally, failed);
@@ -169,7 +175,7 @@ async function collectAll() {
 
   let list;
   let failedSources = [];
-  let sourcesLine = "ss.lv · city24.lv · pp.lv · varianti.lv · latio.lv · arcoreal.lv";
+  let sourcesLine = "ss.lv · city24.lv · pp.lv · varianti.lv · latio.lv · arcoreal.lv · reklama.lv";
 
   if (REPORT_ONLY) {
     log("\n  --report: rebuilding from state/last-run.json, no network");
@@ -194,8 +200,13 @@ async function collectAll() {
           log,
         });
       }
+      const rek = list.filter((l) => l.source === "reklama.lv");
+      if (rek.length) {
+        log(`\n  reading ${rek.length} reklama.lv ads for districts, text and galleries…`);
+        await reklama.enrichAll(rek, { concurrency: 3, delayMs: CONFIG.requestDelayMs || 500, log });
+      }
     } else {
-      log("\n  --fast: skipping the ss.lv deep read (no dates, shallow galleries)");
+      log("\n  --fast: skipping the deep reads (no dates, shallow galleries)");
     }
 
     const beforeFinal = list.length;
@@ -235,7 +246,13 @@ async function collectAll() {
   if (healed) log(`  carried ${healed} verdict${healed === 1 ? "" : "s"} across merged posts`);
 
   const seen = loadSeen();
-  for (const l of list) l.isNew = !(l.ids || [l.id]).some((id) => seen[id]);
+  const nowIso = new Date().toISOString();
+  for (const l of list) {
+    const firsts = (l.ids || [l.id]).map((id) => seen[id]).filter(Boolean).sort();
+    l.isNew = !firsts.length;
+    // when this flat first turned up on ANY site — the one date every source has
+    l.firstSeen = firsts[0] || nowIso;
+  }
   const nnew = list.filter((l) => l.isNew).length;
 
   sortListings(list);

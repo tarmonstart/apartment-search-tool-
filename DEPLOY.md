@@ -24,7 +24,7 @@ run.ps1, serve.ps1, serve.js,   local-only helpers; harmless to include
 find-rentals-quiet.ps1
 ```
 
-**Do not commit `state/user-state.json`** — those are your like/maybe/discard piles.
+**Do not commit `state/user-state.json`** — those are your 👍 / 👎 votes.
 `.gitignore` already blocks it. (See §5 if you want them synced anyway.)
 
 Keep `state/seen.json` and `state/geocache.json`. They are the memory between runs: without
@@ -75,14 +75,14 @@ schtasks /Delete /TN "RigaRentals Morning" /F
 schtasks /Delete /TN "RigaRentals Afternoon" /F
 ```
 
-## 5. Your like / maybe / discard piles on the hosted version
+## 5. Your 👍 / 👎 votes on the hosted version
 
 On GitHub Pages the page is static — there is no server to write to — so verdicts are kept
 in **that browser's localStorage**. That is durable (it survives closing the browser and
 new deploys), but it is **per device**: what you tag on the phone will not appear on the PC.
 
-To move them: **⋯ → Export picks** on one device, **⋯ → Import picks** on the other. Import
-merges, it never wipes.
+To move them: **Varmuuskopioi valinnat** (footer) on one device, **Palauta varmuuskopio** on
+the other. Restoring merges, it never wipes.
 
 If you want them to sync properly, the repo must be **private** and you must commit
 `state/user-state.json` deliberately (delete those two lines from `.gitignore`). Then every
