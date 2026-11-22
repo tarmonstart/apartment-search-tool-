@@ -271,6 +271,7 @@ async function collectAll() {
     photos,
     preferredRooms: CONFIG.preferredRooms,
     sources: sourcesLine,
+    theme: process.env.RR_THEME || CONFIG.theme || "kvartals",
     // public web-app config (not a secret); only passed on once it is filled in
     firebase: CONFIG.firebase && CONFIG.firebase.apiKey
       ? {

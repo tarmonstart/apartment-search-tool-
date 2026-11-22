@@ -1,0 +1,109 @@
+/* logs — the Nordic-window brand, layered over report.css (Kvartāls).
+   Birch white and fjord blue, a pale sky for highlights, Manrope throughout,
+   soft rounded corners and air instead of ornament. */
+:root {
+  --bg: #F4F1EA;          /* birch */
+  --card: #FFFFFF;
+  --ink: #1F3A5F;         /* fjord */
+  --muted: #3A4E6B;
+  --faint: #5A6C86;
+  --line: #E3E6EA;
+  --soft: #EEF2F7;
+  --plaster: #DCE8F3;
+  --gilt: #8FB8DE;        /* sky: highlights, never text */
+  --accent: #1F3A5F;
+  --accent-ink: #FFFFFF;
+  --good: #1F6B52;
+  --good-soft: #E1F1EA;
+  --warn: #8A4B1E;
+  --warn-soft: #F7EADF;
+  --serif: "Manrope", system-ui, sans-serif;
+  --sans: "Manrope", system-ui, sans-serif;
+  --shadow: 0 1px 2px rgba(31, 58, 95, .06), 0 10px 28px rgba(31, 58, 95, .07);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0F1B2B;
+    --card: #16263B;
+    --ink: #EAF1F8;
+    --muted: #C2D0E0;
+    --faint: #9FB1C6;
+    --line: #26394F;
+    --soft: #1C2F46;
+    --plaster: #24405F;
+    --gilt: #8FB8DE;
+    --accent: #8FB8DE;
+    --accent-ink: #0F1B2B;
+    --good: #8FD6B6;
+    --good-soft: #17352C;
+    --warn: #F0B58A;
+    --warn-soft: #3A2A1C;
+    --shadow: none;
+    color-scheme: dark;
+  }
+}
+
+body { font-family: var(--sans); }
+.btn { border-radius: 12px; letter-spacing: 0; text-transform: none; font-size: 14px; font-weight: 600; }
+.btn.ghost { background: var(--card); }
+.top { border-bottom: 1px solid var(--line); }
+.top::after { display: none; }
+.brand .mark { width: 30px; height: 30px; }
+.brand h1 { font-weight: 800; font-size: 30px; letter-spacing: -.04em; }
+.sub { text-transform: none; letter-spacing: 0; font-size: 12px; }
+.tabs { background: var(--soft); border-radius: 14px; padding: 4px; gap: 4px; margin-bottom: 2px; }
+.tab { border: 0; border-radius: 10px; letter-spacing: 0; text-transform: none; font-size: 12px; font-weight: 600; padding: 7px 2px; }
+.tab b { font: 800 18px/1.15 var(--sans); letter-spacing: -.02em; }
+.tab.on { background: var(--card); box-shadow: 0 1px 3px rgba(31, 58, 95, .12); }
+.chip { border-radius: 999px; }
+
+.card { border: 0; border-radius: 22px; padding: 8px 8px 0; box-shadow: var(--shadow); }
+.gal { border-radius: 16px; aspect-ratio: 4 / 3; }
+.pill { letter-spacing: 0; text-transform: none; font-weight: 700; border-radius: 999px; }
+.pill.new, .pill.seen { left: 10px; top: 10px; transform: none; outline: 0; }
+.pill.new { background: #1F3A5F; color: #FFFFFF; }
+.pill.seen { background: #DCE8F3; color: #1F3A5F; }
+.gal-count, .pill.multi { border-radius: 999px; background: rgba(15, 27, 43, .62); }
+
+.info { text-align: left; justify-items: start; padding: 14px 8px 4px; gap: 5px; }
+.row1 { justify-content: flex-start; width: 100%; }
+.price { font: 800 30px/1 var(--sans); letter-spacing: -.03em; }
+.age { flex-basis: auto; margin-left: auto; letter-spacing: 0; }
+.facts { letter-spacing: 0; text-transform: none; font-size: 15px; font-weight: 600; }
+.tags { justify-content: flex-start; }
+.tag { border-radius: 999px; letter-spacing: 0; text-transform: none; font-size: 12px; font-weight: 600; }
+.links { justify-content: flex-start; letter-spacing: 0; text-transform: none; font-size: 13px; font-weight: 600; width: 100%; }
+.links a { border-bottom: 0; color: var(--ink); text-decoration: underline; text-decoration-color: var(--gilt); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+.seentoggle { margin-left: auto; }
+
+.vote { padding: 12px 0 8px; }
+.vote button { border-radius: 14px; border: 0; background: var(--soft); letter-spacing: 0; text-transform: none; font-size: 15px; font-weight: 700; }
+.vote .yes { background: var(--accent); color: var(--accent-ink); }
+.vote .yes.on { outline: 3px solid var(--gilt); }
+
+.empty b { font: 800 26px/1.2 var(--sans); letter-spacing: -.02em; }
+.foot { border-top: 0; }
+
+.sheet-card { border-top: 0; border-radius: 24px 24px 0 0; }
+@media (min-width: 700px) { .sheet-card { border-left: 0; border-radius: 0; } }
+.sheet-head h2 { font: 800 24px/1 var(--sans); letter-spacing: -.02em; }
+.flabel { letter-spacing: 0; text-transform: none; font-size: 14px; font-weight: 700; }
+.fgroup input, .fgroup select { border-radius: 12px; }
+.presets button, .toggles button { border-radius: 12px; font-weight: 600; }
+#fRooms button { font: 700 17px var(--sans); }
+
+.map-head { border-bottom: 1px solid var(--line); }
+.map-head #mapTitle { letter-spacing: 0; text-transform: none; font-size: 13px; }
+.mpop { font-family: "Manrope", system-ui, sans-serif; color: #1F3A5F; text-align: left; }
+.mpop img { border-radius: 12px; }
+.mpop b { font: 800 22px "Manrope", system-ui, sans-serif; }
+.mvote { justify-content: flex-start; }
+.mvote button { border-radius: 10px; border-color: #D5DCE5; color: #1F3A5F; letter-spacing: 0; text-transform: none; font-weight: 600; }
+.mvote button.on { background: #1F3A5F; color: #FFFFFF; }
+.mvote a { color: #1F3A5F; letter-spacing: 0; text-transform: none; }
+
+.lightbox { background: #0F1B2B; }
+.lb-bar .btn { background: transparent; color: #FFFFFF; border-color: rgba(255, 255, 255, .4); }
+.toast { background: #1F3A5F; outline: 0; border-radius: 14px; letter-spacing: 0; }
+.toast .link { color: #BBD5EE; }

@@ -1,6 +1,9 @@
 {
   "_comment": "Edit these to change what the finder looks for. Re-run after editing.",
 
+  "theme": "kvartals",
+  "_theme": "The report's brand: \"kvartals\" (Art Nouveau teal & gilt) or \"logs\" (Nordic window).",
+
   "siteUrl": "",
   "_siteUrl": "Public URL where the report is hosted (e.g. https://rentals.example.com/listings.html). Only used for SEO/GEO tags (canonical, Open Graph, JSON-LD @id). Leave empty when browsing the file locally.",
 

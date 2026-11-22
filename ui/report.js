@@ -215,6 +215,12 @@
     return m < 12 ? (m === 1 ? "a month ago" : m + " months ago") : "over a year ago";
   }
   function roomsTxt(n) { return n === 1 ? "1 room" : n + " rooms"; }
+  // stroke icons (never emoji: they render differently on every phone)
+  var ICON = {
+    pin: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>',
+    x: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+    heart: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></svg>',
+  };
   var narrow = window.matchMedia ? window.matchMedia("(max-width: 640px)") : { matches: false };
   function photos(l) { return (l.img && l.img.p) || []; }
 
@@ -254,7 +260,7 @@
       '<div class="gal" data-n="' + ps.length + '">' +
         '<div class="gal-track">' + gallery + "</div>" +
         (ps.length > 1 ? '<span class="gal-count">1/' + ps.length + "</span>" : "") +
-        (seen ? '<span class="pill seen">👁 VIEWED</span>' : l.isNew ? '<span class="pill new">NEW</span>' : "") +
+        (seen ? '<span class="pill seen">Viewed</span>' : l.isNew ? '<span class="pill new">New</span>' : "") +
         (nSites > 1 ? '<span class="pill multi" title="The same flat on several sites">' + nSites + " sites</span>" : "") +
       "</div>" +
       '<div class="info">' +
@@ -263,7 +269,7 @@
           '<span class="age">' + esc(ago(l.firstSeen || l.date)) + "</span></div>" +
         '<div class="facts">' + facts.join(" · ") + "</div>" +
         '<button class="addr" type="button"' + (l.lat != null ? "" : " disabled") + ">" +
-          "📍 " + esc(l.street || "no address") + (l.district && l.district !== "Rīga" ? ", " + esc(l.district) : "") + "</button>" +
+          ICON.pin + esc(l.street || "no address") + (l.district && l.district !== "Rīga" ? ", " + esc(l.district) : "") + "</button>" +
         (tags.length ? '<div class="tags">' + tags.join("") + "</div>" : "") +
         (l.description ? '<p class="desc">' + esc(l.description) + "</p>" : "") +
         '<div class="links">' + links.map(function (a) {
@@ -273,8 +279,8 @@
         "</div>" +
       "</div>" +
       '<div class="vote">' +
-        '<button class="no' + (v === "discard" ? " on" : "") + '" type="button" data-v="discard" aria-label="Reject">👎<span>Nope</span></button>' +
-        '<button class="yes' + (v === "like" ? " on" : "") + '" type="button" data-v="like" aria-label="Like">👍<span>Like</span></button>' +
+        '<button class="no' + (v === "discard" ? " on" : "") + '" type="button" data-v="discard">' + ICON.x + "<span>Pass</span></button>" +
+        '<button class="yes' + (v === "like" ? " on" : "") + '" type="button" data-v="like">' + ICON.heart + "<span>" + (v === "like" ? "Liked" : "Like") + "</span></button>" +
       "</div>" +
     "</article>";
   }
@@ -342,7 +348,7 @@
     if (rows.length) { e.hidden = true; return; }
     e.hidden = false;
     e.innerHTML = tab === "todo"
-      ? (filtered.length ? "<b>All caught up! 🎉</b><br>New flats arrive twice a day." : "<b>No matches.</b><br>Try loosening the filters.")
+      ? (filtered.length ? "<b>All caught up.</b>New flats arrive twice a day." : "<b>No matches.</b>Try loosening the filters.")
       : tab === "seen" ? "Nothing viewed but undecided with these filters. A flat lands here when you open its photos, its ad or its map pin."
       : tab === "like" ? "No liked flats with these filters yet."
       : "No disliked flats with these filters.";
@@ -354,7 +360,7 @@
     if (F.max != null) c.push(["max", "≤ " + F.max + " €"]);
     if (F.rooms.length) c.push(["rooms", F.rooms.map(function (r) { return r === 4 ? "4+" : r; }).join(", ") + " rooms"]);
     if (F.area != null) c.push(["area", "≥ " + F.area + " m²"]);
-    if (F.zones.length) c.push(["zones", "✏ " + zonesLabel()]);
+    if (F.zones.length) c.push(["zones", zonesLabel()]);
     if (F.districts.length) c.push(["districts", F.districts.length > 2 ? F.districts.slice(0, 2).join(", ") + " +" + (F.districts.length - 2) : F.districts.join(", ")]);
     var FL = { fresh: "last 3 days", util: "utilities incl.", reno: "renovated", furn: "furnished", photos: "has photos" };
     F.flags.forEach(function (f) { c.push(["flag:" + f, FL[f] || f]); });
@@ -388,7 +394,7 @@
     } else {
       render(true);
     }
-    toast(next === "like" ? "👍 Saved to liked" : next === "discard" ? "👎 Disliked" : "Back in " + (seenOf(l) ? "Viewed" : "Unviewed"), snap);
+    toast(next === "like" ? "Saved to Liked" : next === "discard" ? "Moved to Disliked" : "Back in " + (seenOf(l) ? "Viewed" : "Unviewed"), snap);
   }
 
   // ------------------------------------------------------------- lightbox
@@ -428,7 +434,7 @@
     wireDrawing();
     return map;
   }
-  var COL = { like: "#16a34a", discard: "#9ca3af", todo: "#2563eb", seen: "#7c3aed" };
+  var COL = (META.brand && META.brand.pins) || { like: "#16a34a", discard: "#9ca3af", todo: "#2563eb", seen: "#7c3aed" };
   function popupHTML(l) {
     var ps = photos(l), v = verdictOf(l);
     return '<div class="mpop" data-id="' + esc(l.id) + '">' +
@@ -436,8 +442,8 @@
       "<b>" + (l.price == null ? "—" : esc(l.price) + " €") + "</b> · " +
       [l.rooms != null ? roomsTxt(l.rooms) : "", l.area != null ? l.area + " m²" : ""].filter(Boolean).join(" · ") +
       "<br><small>" + esc(l.street || "") + "</small>" +
-      '<div class="mvote"><button data-v="discard" class="' + (v === "discard" ? "on" : "") + '">👎</button>' +
-      '<button data-v="like" class="' + (v === "like" ? "on" : "") + '">👍</button>' +
+      '<div class="mvote"><button data-v="discard" class="' + (v === "discard" ? "on" : "") + '">Pass</button>' +
+      '<button data-v="like" class="' + (v === "like" ? "on" : "") + '">Like</button>' +
       '<a href="' + esc(safeUrl(l.url)) + '" target="_blank" rel="noopener">open ↗</a></div></div>';
   }
   var mapOnly = null;
@@ -469,10 +475,19 @@
         (noGeo ? " · " + noGeo + " without a location" : "");
     if (noFit) return;
     if (pts.length === 1) map.setView(pts[0], 16);
-    else if (pts.length) map.fitBounds(pts, { padding: [24, 24], maxZoom: 15 });
+    else if (pts.length) map.fitBounds(coreBounds(pts), { padding: [24, 24], maxZoom: 15 });
     else if (F.zones.length) map.fitBounds([].concat.apply([], F.zones), { padding: [24, 24] });
   }
   var noFit = false; // keep the view still right after the user draws an area
+  // Frame where the flats actually are: a handful of listings out in the
+  // suburbs would otherwise zoom the whole city out to a speck.
+  function coreBounds(pts) {
+    if (pts.length < 20) return pts;
+    var la = pts.map(function (p) { return p[0]; }).sort(function (a, b) { return a - b; });
+    var lo = pts.map(function (p) { return p[1]; }).sort(function (a, b) { return a - b; });
+    var q = function (arr, f) { return arr[Math.min(arr.length - 1, Math.max(0, Math.round(f * (arr.length - 1))))]; };
+    return [[q(la, 0.04), q(lo, 0.04)], [q(la, 0.96), q(lo, 0.96)]];
+  }
 
   // ------------------------------------------------------------ draw area
   // Press "Draw area", drag a line around any part of the city, let go: the
@@ -481,7 +496,7 @@
   var drawArmed = false, drawPts = null, drawLine = null;
   function paintDrawBtns() {
     var b = $("#drawBtn"), c = $("#clearZonesBtn"), h = $("#drawHint");
-    b.textContent = drawArmed ? "Cancel" : F.zones.length ? "✏ Add area" : "✏ Draw area";
+    b.textContent = drawArmed ? "Cancel" : F.zones.length ? "Add area" : "Draw area";
     b.classList.toggle("primary", !drawArmed && !F.zones.length);
     c.hidden = !F.zones.length || drawArmed;
     h.hidden = !drawArmed;
@@ -575,7 +590,7 @@
     setVerdict(l, next);
     if (map) map.closePopup();
     render(true);
-    toast(next === "like" ? "👍 Liked" : next === "discard" ? "👎 Disliked" : "Back in " + (seenOf(l) ? "Viewed" : "Unviewed"), snap);
+    toast(next === "like" ? "Saved to Liked" : next === "discard" ? "Moved to Disliked" : "Back in " + (seenOf(l) ? "Viewed" : "Unviewed"), snap);
   });
 
   // ---------------------------------------------------------- filter sheet
@@ -607,7 +622,7 @@
     $("#zoneInfo").textContent = F.zones.length
       ? "Showing only flats inside your " + zonesLabel() + "."
       : "Draw one or more areas on the map to search only there.";
-    $("#zoneDraw").textContent = F.zones.length ? "✏ Add another area" : "✏ Draw on map";
+    $("#zoneDraw").textContent = F.zones.length ? "Add another area" : "Draw on map";
     $("#zoneClear").hidden = !F.zones.length;
     var n = DATA.filter(passes).filter(function (l) { return stateOf(l) === tab; }).length;
     $("#applyBtn").textContent = "Show " + n + (n === 1 ? " flat" : " flats");
@@ -637,6 +652,7 @@
     F = freshF(); changed();
   });
   function openSheet(focus) {
+    $("#toast").hidden = true;
     paintSheet(); sheet.hidden = false; document.body.classList.add("noscroll");
     if (focus) setTimeout(function () { var el = $(focus); if (el) el.scrollIntoView({ block: "center" }); }, 50);
   }
@@ -795,12 +811,14 @@
     if (!b) return;
     b.hidden = !FB;
     if (cloud.user) {
-      b.textContent = "☁ " + ((cloud.user.displayName || cloud.user.email || "Signed in").split(" ")[0]);
+      b.textContent = (cloud.user.displayName || cloud.user.email || "Signed in").split(" ")[0];
+      b.classList.add("signed");
       b.title = "Synced to " + (cloud.user.email || "your account") + " · tap to sign out";
       $("#saveNote").textContent = msg || ("Your votes and views are saved to your Google account (" +
         (cloud.user.email || "signed in") + ") and sync between your devices.");
     } else {
       b.textContent = "Sign in";
+      b.classList.remove("signed");
       b.title = "Sign in with Google to keep your votes in your account";
       if (msg) $("#saveNote").textContent = msg; else paintSaveNote();
     }
