@@ -41,6 +41,9 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -- state/seen.json state/geocache.json state/pois.json || true
           git diff --cached --quiet || git commit -m "state: crawl $(date -u '+%Y-%m-%d %H:%M') UTC"
+          # main may have moved on while the crawl ran (a code change pushed
+          # meanwhile); replay this state commit on top instead of failing
+          git pull --rebase origin main
           git push
 
       - name: Assemble the site
