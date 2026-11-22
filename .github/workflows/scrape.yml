@@ -39,7 +39,7 @@ jobs:
         run: |
           git config user.name "rentals-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- state/seen.json state/geocache.json || true
+          git add -- state/seen.json state/geocache.json state/pois.json || true
           git diff --cached --quiet || git commit -m "state: crawl $(date -u '+%Y-%m-%d %H:%M') UTC"
           git push
 

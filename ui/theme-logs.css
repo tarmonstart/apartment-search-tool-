@@ -98,6 +98,8 @@ body { font-family: var(--sans); }
 
 .map-head { border-bottom: 1px solid var(--line); }
 .map-head #mapTitle { letter-spacing: 0; text-transform: none; font-size: 13px; }
+.near { justify-content: flex-start; }
+.poi-t { border-radius: 999px; }
 .mpop { font-family: "Manrope", system-ui, sans-serif; color: #1F3A5F; text-align: left; }
 .mpop img { border-radius: 12px; }
 .mpop b { font: 800 22px "Manrope", system-ui, sans-serif; }

@@ -80,6 +80,12 @@
     "_note": "reklama.lv classifieds, Rīga rentals, 20 per page. Survivors of the basic filters get a deep read for district, full text and gallery."
   },
 
+  "pois": {
+    "enabled": true,
+    "maxAgeDays": 7,
+    "_note": "Grocery stores, tram and bus stops from OpenStreetMap (Overpass API), for the map layer and each flat's nearest store/stop. Re-fetched at most this often; cached in state/pois.json. Data © OpenStreetMap contributors."
+  },
+
   "geocode": {
     "enabled": true,
     "maxPerRun": 60,

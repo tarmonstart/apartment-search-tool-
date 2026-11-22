@@ -220,6 +220,7 @@
     pin: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>',
     x: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>',
     heart: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></svg>',
+    basket: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h16l-1.6 9.2a2 2 0 0 1-2 1.8H7.6a2 2 0 0 1-2-1.8z"/><path d="M9 9l3-5 3 5"/></svg>',
     left: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>',
     right: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>',
   };
@@ -227,6 +228,16 @@
   var narrow = window.matchMedia ? window.matchMedia("(max-width: 640px)") : { matches: false };
   function photos(l) { return (l.img && l.img.p) || []; }
 
+  // "Rimi 140 m · T 320 m · B 90 m": what is round the corner
+  function dist(m) { return m < 1000 ? m + " m" : (m / 1000).toFixed(1) + " km"; }
+  function nearHTML(l) {
+    var n = l.near; if (!n) return "";
+    var bits = [];
+    if (n.g) bits.push('<span class="near-i" title="Nearest grocery store">' + ICON.basket + esc(n.g[0]) + " <b>" + dist(n.g[1]) + "</b></span>");
+    if (n.t) bits.push('<span class="near-i" title="Nearest tram stop' + (n.t[0] ? ": " + esc(n.t[0]) : "") + '"><i class="poi-dot t">T</i><b>' + dist(n.t[1]) + "</b></span>");
+    if (n.b) bits.push('<span class="near-i" title="Nearest bus stop' + (n.b[0] ? ": " + esc(n.b[0]) : "") + '"><i class="poi-dot b">B</i><b>' + dist(n.b[1]) + "</b></span>");
+    return bits.length ? '<div class="near">' + bits.join("") + "</div>" : "";
+  }
   function cardHTML(l) {
     var v = verdictOf(l), size = narrow.matches ? "card" : "grid";
     var tags = [];
@@ -263,6 +274,7 @@
         '<div class="facts">' + facts.join(" · ") + "</div>" +
         '<button class="addr" type="button"' + (l.lat != null ? "" : " disabled") + ">" +
           ICON.pin + esc(l.street || "no address") + (l.district && l.district !== "Rīga" ? ", " + esc(l.district) : "") + "</button>" +
+        nearHTML(l) +
         (tags.length ? '<div class="tags">' + tags.join("") + "</div>" : "") +
         (l.description ? '<p class="desc">' + esc(l.description) + "</p>" : "") +
         '<div class="links">' + links.map(function (a) {
@@ -621,15 +633,90 @@
   });
 
   // ------------------------------------------------------------------ map
-  var map = null, layer = null, zoneLayer = null;
+  var map = null, layer = null, zoneLayer = null, poiLayer = null, nearLayer = null;
+
+  // ------------------------------------------------- groceries & stops layer
+  // Only drawn from street level (zoom 14+), and only what is in view, so a
+  // phone never has to hold thousands of markers.
+  var POI_ON = Object.assign({ g: true, t: true, b: true }, load("rr2.poi", {}) || {});
+  var POI_NAME = { g: "Grocery", t: "Tram stop", b: "Bus stop" };
+  var POI_COL = { g: "#3F8A4A", t: "#2F5D8C", b: "#6F7A84" }; // must match .poi-dot in the CSS
+  var POI_ICON = {};
+  function poiIcon(k) {
+    if (!POI_ICON[k]) POI_ICON[k] = L.divIcon({
+      className: "poi-mk",
+      html: '<i class="poi-dot ' + k + '">' + (k === "t" ? "T" : k === "b" ? "B" : "") + "</i>",
+      iconSize: [20, 20], iconAnchor: [10, 10],
+    });
+    return POI_ICON[k];
+  }
+  function plotPois() {
+    if (!map || !poiLayer) return;
+    poiLayer.clearLayers();
+    var bar = $("#poiBar");
+    bar.hidden = !POIS;
+    if (!POIS) return;
+    var z = map.getZoom();
+    bar.classList.toggle("far", z < 14);
+    if (z < 14) return;
+    var bb = map.getBounds().pad(0.15);
+    ["g", "t", "b"].forEach(function (k) {
+      if (!POI_ON[k]) return;
+      (POIS[k] || []).forEach(function (p) {
+        if (!bb.contains([p[0], p[1]])) return;
+        L.marker([p[0], p[1]], { icon: poiIcon(k), pane: "pois", keyboard: false, title: (p[2] || POI_NAME[k]) })
+          .bindTooltip((p[2] ? esc(p[2]) + " · " : "") + POI_NAME[k], { direction: "top", offset: [0, -8] })
+          .addTo(poiLayer);
+      });
+    });
+  }
+  // one flat on its own: dashed lines to its nearest grocery, tram and bus stop
+  function plotNear(l) {
+    if (!nearLayer) return [];
+    nearLayer.clearLayers();
+    var spots = [];
+    if (!l || !l.near || !POIS || l.lat == null) return spots;
+    ["g", "t", "b"].forEach(function (k) {
+      if (!l.near[k]) return;
+      var best = null, bd = Infinity;
+      (POIS[k] || []).forEach(function (p) {
+        var d = Math.abs(p[0] - l.lat) + Math.abs(p[1] - l.lon) * 0.55;
+        if (d < bd) { bd = d; best = p; }
+      });
+      if (!best) return;
+      L.polyline([[l.lat, l.lon], [best[0], best[1]]], { color: POI_COL[k], weight: 2.5, dashArray: "4 6", opacity: 0.85, interactive: false }).addTo(nearLayer);
+      spots.push([best[0], best[1]]);
+    });
+    return spots;
+  }
+  $("#poiBar").addEventListener("click", function (e) {
+    var b = e.target.closest(".poi-t"); if (!b) return;
+    var k = b.dataset.k;
+    POI_ON[k] = !POI_ON[k];
+    b.classList.toggle("on", POI_ON[k]);
+    save("rr2.poi", POI_ON);
+    plotPois();
+  });
+  $$("#poiBar .poi-t").forEach(function (b) { b.classList.toggle("on", !!POI_ON[b.dataset.k]); });
   function ensureMap() {
     if (map || typeof L === "undefined") return map;
     map = L.map("mapCanvas", { preferCanvas: true, zoomControl: true }).setView([56.951, 24.113], 12);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19, attribution: "© OpenStreetMap",
-    }).addTo(map);
+    // A quiet base map (Esri Light / Dark Gray Canvas, no key needed): streets
+    // and names only — no shops, cafés or banks of its own — so the only points
+    // on it are the flats, the grocery stores and the stops.
+    var dark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    var esri = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_" + (dark ? "Dark" : "Light") + "_Gray_";
+    var tileOpts = { maxNativeZoom: 16, maxZoom: 19 };
+    L.tileLayer(esri + "Base/MapServer/tile/{z}/{y}/{x}", Object.assign({
+      attribution: '© Esri · © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    }, tileOpts)).addTo(map);
+    L.tileLayer(esri + "Reference/MapServer/tile/{z}/{y}/{x}", tileOpts).addTo(map); // street names
+    map.createPane("pois").style.zIndex = 350; // under the flats' canvas (400)
+    poiLayer = L.layerGroup().addTo(map);
+    nearLayer = L.layerGroup().addTo(map);
     zoneLayer = L.layerGroup().addTo(map);
     layer = L.layerGroup().addTo(map);
+    map.on("moveend zoomend", plotPois);
     wireDrawing();
     return map;
   }
@@ -641,6 +728,7 @@
       "<b>" + (l.price == null ? "—" : esc(l.price) + " €") + "</b> · " +
       [l.rooms != null ? roomsTxt(l.rooms) : "", l.area != null ? l.area + " m²" : ""].filter(Boolean).join(" · ") +
       "<br><small>" + esc(l.street || "") + "</small>" +
+      nearHTML(l) +
       '<div class="mvote"><button data-v="discard" class="' + (v === "discard" ? "on" : "") + '">Pass</button>' +
       '<button data-v="like" class="' + (v === "like" ? "on" : "") + '">Like</button>' +
       '<a href="' + esc(safeUrl(l.url)) + '" target="_blank" rel="noopener">open ↗</a></div></div>';
@@ -667,13 +755,17 @@
       m.addTo(layer);
       pts.push([l.lat, l.lon]);
     });
+    var nearSpots = plotNear(mapOnly);
     var noGeo = src.length - pts.length;
     $("#mapTitle").textContent = mapOnly
       ? (mapOnly.street || "Location")
       : pts.length + (pts.length === 1 ? " flat" : " flats") + " on the map" +
         (noGeo ? " · " + noGeo + " without a location" : "");
     if (noFit) return;
-    if (pts.length === 1) map.setView(pts[0], 16);
+    setTimeout(plotPois, 0);
+    // one flat: frame it together with its nearest store, tram and bus stop
+    if (mapOnly && pts.length === 1 && nearSpots.length) map.fitBounds(pts.concat(nearSpots), { padding: [48, 48], maxZoom: 17 });
+    else if (pts.length === 1) map.setView(pts[0], 16);
     else if (pts.length) map.fitBounds(coreBounds(pts), { padding: [24, 24], maxZoom: 15 });
     else if (F.zones.length) map.fitBounds([].concat.apply([], F.zones), { padding: [24, 24] });
   }

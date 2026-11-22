@@ -35,6 +35,7 @@ const { dedupe } = require("./lib/dedupe");
 const { geocodeAll } = require("./lib/geocode");
 const { loadUserState, saveUserState, spreadVerdicts, countVerdicts } = require("./lib/state");
 const { writeHTML, writeCSV } = require("./lib/report");
+const { loadPois, attachNearest } = require("./lib/pois");
 
 const ARGS = new Set(process.argv.slice(2));
 const FAST = ARGS.has("--fast");
@@ -240,6 +241,15 @@ async function collectAll() {
     await geocodeAll(list, ROOT, CONFIG.geocode || {}, { log, network: !REPORT_ONLY });
   }
 
+  // Grocery stores, tram and bus stops (OpenStreetMap, refreshed weekly): the
+  // map layer, and the nearest of each for every flat.
+  let pois = null;
+  if (!CONFIG.pois || CONFIG.pois.enabled !== false) {
+    pois = await loadPois(ROOT, CONFIG.pois || {}, { log, network: !REPORT_ONLY });
+    const withNear = attachNearest(list, pois);
+    if (pois) log(`  nearest store & stops worked out for ${withNear} flats`);
+  }
+
   // Carry each verdict onto every id in its cluster, so collapsing posts can
   // never orphan a decision the user made about one of them.
   const healed = spreadVerdicts(list, userState);
@@ -290,7 +300,7 @@ async function collectAll() {
   }
 
   const csvPath = writeCSV(ROOT, list);
-  const htmlPath = writeHTML(ROOT, list, meta, userState);
+  const htmlPath = writeHTML(ROOT, list, meta, userState, pois);
   // --report only re-renders what the last crawl already found, so recording
   // these ids as seen would wipe the "new" markers the real run just produced.
   if (!REPORT_ONLY) saveSeen(seen, list.flatMap((l) => l.ids || [l.id]));
