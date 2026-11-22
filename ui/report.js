@@ -236,13 +236,15 @@
   function nearHTML(l) {
     var n = l.near; if (!n) return "";
     var bits = [];
-    if (n.g) bits.push('<span class="near-i" title="Nearest grocery store">' + ICON.basket + esc(n.g[0]) + " <b>" + dist(n.g[1]) + "</b></span>");
+    if (n.g) bits.push('<span class="near-i" title="Nearest big supermarket">' + ICON.basket + esc(n.g[0]) + " <b>" + dist(n.g[1]) + "</b></span>");
     if (n.t) bits.push('<span class="near-i" title="Nearest tram stop' + (n.t[0] ? ": " + esc(n.t[0]) : "") + '"><i class="poi-dot t">T</i><b>' + dist(n.t[1]) + "</b></span>");
     if (n.b) bits.push('<span class="near-i" title="Nearest bus stop' + (n.b[0] ? ": " + esc(n.b[0]) : "") + '"><i class="poi-dot b">B</i><b>' + dist(n.b[1]) + "</b></span>");
     return bits.length ? '<div class="near">' + bits.join("") + "</div>" : "";
   }
   function cardHTML(l) {
-    var v = verdictOf(l), size = narrow.matches ? "card" : "grid";
+    // the large rendition everywhere: the small one was blurry on desktop
+    // and retina screens; only the visible photo and the next one load
+    var v = verdictOf(l), size = "card";
     var tags = [];
     if (l.utilities === "included") tags.push('<span class="tag good">utilities included</span>');
     else if (l.summerUtil != null || l.winterUtil != null)
@@ -438,7 +440,7 @@
     var imgs = ps.map(function (p, k) {
       var src = esc(imgUrl(l.img.k, p, size));
       return '<img class="ph ' + (k === 0 ? "cur" : k === 1 ? "b1" : k === 2 ? "b2" : "hidden") + '" data-k="' + k + '" ' +
-        (k < 3 ? 'src="' + src + '"' : 'data-src="' + src + '"') + ' alt="" draggable="false" decoding="async">';
+        (k < 2 ? 'src="' + src + '"' : 'data-src="' + src + '"') + ' alt="" draggable="false" decoding="async" loading="lazy">';
     }).join("");
     return '<div class="gal deck' + (big ? " big" : "") + '" data-n="' + n + '" data-i="0">' +
       '<div class="deck-stack">' + imgs + "</div>" + (extra || "") +
@@ -457,7 +459,7 @@
       var rel = +img.dataset.k - i, broken = img.classList.contains("broken");
       img.style.transition = ""; img.style.transform = ""; img.style.opacity = ""; img.style.filter = "";
       img.className = "ph " + (rel < 0 ? "gone" : rel === 0 ? "cur" : rel === 1 ? "b1" : rel === 2 ? "b2" : "hidden") + (broken ? " broken" : "");
-      if (rel >= -1 && rel <= 2) loadPh(img); // what is visible, and the one a swipe back brings
+      if (rel >= -1 && rel <= 1) loadPh(img); // this photo, the next, and the one a swipe back brings
     });
     var c = $(".gal-count", d); if (c) c.textContent = (i + 1) + " / " + n;
     var pb = $(".deck-btn.prev", d), nb = $(".deck-btn.next", d);
@@ -659,20 +661,23 @@
   // ------------------------------------------------------------------ map
   var map = null, layer = null, zoneLayer = null, poiLayer = null, nearLayer = null;
 
-  // ------------------------------------------------- groceries & stops layer
+  // ------------------------------------------------- supermarkets & stops layer
   // Only drawn from street level (zoom 14+), and only what is in view, so a
   // phone never has to hold thousands of markers.
   var POI_ON = Object.assign({ g: true, t: true, b: true }, load("rr2.poi", {}) || {});
-  var POI_NAME = { g: "Grocery", t: "Tram stop", b: "Bus stop" };
+  var POI_NAME = { g: "Supermarket", t: "Tram stop", b: "Bus stop" };
   var POI_COL = { g: "#3F8A4A", t: "#2F5D8C", b: "#6F7A84" }; // must match .poi-dot in the CSS
   var POI_ICON = {};
-  function poiIcon(k) {
-    if (!POI_ICON[k]) POI_ICON[k] = L.divIcon({
+  // supermarkets carry their chain's initial: L(idl), R(imi), M(axima)
+  function poiLetter(k, name) { return k === "t" ? "T" : k === "b" ? "B" : String(name || "S").charAt(0).toUpperCase(); }
+  function poiIcon(k, name) {
+    var ch = poiLetter(k, name), key = k + ch;
+    if (!POI_ICON[key]) POI_ICON[key] = L.divIcon({
       className: "poi-mk",
-      html: '<i class="poi-dot ' + k + '">' + (k === "t" ? "T" : k === "b" ? "B" : "") + "</i>",
+      html: '<i class="poi-dot ' + k + '">' + ch + "</i>",
       iconSize: [20, 20], iconAnchor: [10, 10],
     });
-    return POI_ICON[k];
+    return POI_ICON[key];
   }
   function plotPois() {
     if (!map || !poiLayer) return;
@@ -688,13 +693,13 @@
       if (!POI_ON[k]) return;
       (POIS[k] || []).forEach(function (p) {
         if (!bb.contains([p[0], p[1]])) return;
-        L.marker([p[0], p[1]], { icon: poiIcon(k), pane: "pois", keyboard: false, title: (p[2] || POI_NAME[k]) })
+        L.marker([p[0], p[1]], { icon: poiIcon(k, p[2]), pane: "pois", keyboard: false, title: (p[2] || POI_NAME[k]) })
           .bindTooltip((p[2] ? esc(p[2]) + " · " : "") + POI_NAME[k], { direction: "top", offset: [0, -8] })
           .addTo(poiLayer);
       });
     });
   }
-  // one flat on its own: dashed lines to its nearest grocery, tram and bus stop
+  // one flat on its own: dashed lines to its nearest supermarket, tram and bus stop
   function plotNear(l) {
     if (!nearLayer) return [];
     nearLayer.clearLayers();
@@ -727,7 +732,7 @@
     map = L.map("mapCanvas", { preferCanvas: true, zoomControl: true }).setView([56.951, 24.113], 12);
     // A quiet base map (Esri Light / Dark Gray Canvas, no key needed): streets
     // and names only — no shops, cafés or banks of its own — so the only points
-    // on it are the flats, the grocery stores and the stops.
+    // on it are the flats, the supermarkets and the stops.
     var dark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
     var esri = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_" + (dark ? "Dark" : "Light") + "_Gray_";
     var tileOpts = { maxNativeZoom: 16, maxZoom: 19 };

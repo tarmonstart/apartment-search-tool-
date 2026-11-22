@@ -206,6 +206,11 @@ async function collectAll() {
         log(`\n  reading ${rek.length} reklama.lv ads for districts, text and galleries…`);
         await reklama.enrichAll(rek, { concurrency: 3, delayMs: CONFIG.requestDelayMs || 500, log });
       }
+      const arc = list.filter((l) => l.source === "arcoreal.lv");
+      if (arc.length) {
+        log(`\n  reading ${arc.length} arcoreal.lv ads for their full photo galleries…`);
+        await arcoreal.enrichAll(arc, { concurrency: 3, delayMs: CONFIG.requestDelayMs || 500, log });
+      }
     } else {
       log("\n  --fast: skipping the deep reads (no dates, shallow galleries)");
     }
@@ -241,8 +246,8 @@ async function collectAll() {
     await geocodeAll(list, ROOT, CONFIG.geocode || {}, { log, network: !REPORT_ONLY });
   }
 
-  // Grocery stores, tram and bus stops (OpenStreetMap, refreshed weekly): the
-  // map layer, and the nearest of each for every flat.
+  // Big supermarkets (Lidl, Rimi, Maxima), tram and bus stops (OpenStreetMap,
+  // refreshed weekly): the map layer, and the nearest of each for every flat.
   let pois = null;
   if (!CONFIG.pois || CONFIG.pois.enabled !== false) {
     pois = await loadPois(ROOT, CONFIG.pois || {}, { log, network: !REPORT_ONLY });

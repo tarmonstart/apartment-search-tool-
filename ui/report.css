@@ -472,7 +472,7 @@ svg.ext { width: 13px; height: 13px; }
 .map-acts { display: flex; gap: 6px; align-items: center; margin-left: auto; }
 .map-acts .btn { padding: 6px 12px; min-height: 38px; }
 .map-canvas { flex: 1; }
-/* groceries & stops: switches on the map, small markers under the flats */
+/* supermarkets & stops: switches on the map, small markers under the flats */
 .poi-bar {
   display: flex;
   gap: 6px;
@@ -513,8 +513,8 @@ svg.ext { width: 13px; height: 13px; }
   color: #FFFFFF;
   flex: none;
 }
-.poi-dot.g { background: #3F8A4A; }   /* groceries: green — never a flat colour */
-.poi-dot.g::after { content: ""; width: 6px; height: 6px; border-radius: 1px; background: #FFFFFF; }
+.poi-dot.g { background: #3F8A4A; }   /* supermarkets: green — never a flat colour */
+
 .poi-dot.t { background: #2F5D8C; }   /* tram: blue */
 .poi-dot.b { background: #6F7A84; }   /* bus: quiet grey, there are many */
 .poi-mk { background: none; border: 0; }

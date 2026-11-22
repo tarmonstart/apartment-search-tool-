@@ -70,13 +70,16 @@ free, with your PC switched off.
   stack (with a mouse: the ‹ › arrows on hover). Tap the stack for full screen, where the
   same gestures work; tap the photo for the next one, tap the dark area around it, swipe
   down, press Esc or use the phone's back gesture to close.
-- **What is round the corner:** every card (and map pin) shows the nearest grocery store,
-  tram stop and bus stop with walking-straight-line distance. On the map, zoom in to
-  street level and the grocery stores (green), tram stops (blue, T) and bus stops (grey, B)
-  appear on a quiet base map with nothing else on it; the three switches above the map
-  hide any kind. Opening one flat on the map draws dashed lines to its nearest three.
+- **What is round the corner:** every card (and map pin) shows the nearest big
+  supermarket by name (e.g. "Rimi Hyper", "Maxima XX", "Lidl"), tram stop and bus stop
+  with straight-line distance. Only the large, cheaper formats count: Lidl, Rimi Hyper /
+  Super / plain Rimi supermarkets, Maxima XX / XXX — never Rimi Mini, Rimi Express or
+  Maxima X. On the map, zoom in to street level and the supermarkets (green, with the
+  chain's letter L / R / M), tram stops (blue, T) and bus stops (grey, B) appear on a
+  quiet base map with nothing else on it; the three switches above the map hide any
+  kind. Opening one flat on the map draws dashed lines to its nearest three.
   The stores and stops come from OpenStreetMap (Overpass API), re-fetched weekly into
-  `state/pois.json`; petrol-station shops and kiosks are left out.
+  `state/pois.json`.
 - **Back gesture** closes whatever is open (photos, filters, map) instead of leaving the
   page. The header tucks away while you scroll down and returns on the slightest scroll
   up; each tab remembers where you were; far down, a button takes you back to the top.
