@@ -221,6 +221,9 @@
     x: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>',
     heart: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></svg>',
     basket: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h16l-1.6 9.2a2 2 0 0 1-2 1.8H7.6a2 2 0 0 1-2-1.8z"/><path d="M9 9l3-5 3 5"/></svg>',
+    sort: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4v16M3.5 7.5 7 4l3.5 3.5M17 20V4M13.5 16.5 17 20l3.5-3.5"/></svg>',
+    ext: '<svg class="ic ext" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg>',
+    up: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg>',
     left: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>',
     right: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>',
   };
@@ -278,7 +281,7 @@
         (tags.length ? '<div class="tags">' + tags.join("") + "</div>" : "") +
         (l.description ? '<p class="desc">' + esc(l.description) + "</p>" : "") +
         '<div class="links">' + links.map(function (a) {
-          return '<a href="' + esc(safeUrl(a.url)) + '" target="_blank" rel="noopener">' + esc(a.label) + " ↗</a>";
+          return '<a href="' + esc(safeUrl(a.url)) + '" target="_blank" rel="noopener">' + esc(a.label) + ICON.ext + "</a>";
         }).join("") +
           (v ? "" : '<button class="seentoggle" type="button">' + (seen ? "mark unviewed" : "mark viewed") + "</button>") +
         "</div>" +
@@ -339,7 +342,28 @@
     var fresh = listEl.querySelector('.card[data-id="' + cssEsc(l.id) + '"] .deck');
     if (fresh && at) { fresh.dataset.i = at; layoutDeck(fresh); }
   }
+  // The tabs and filter chips fold away with the handle under the header (and
+  // stay as you left them). Folded, the subtitle says where you are.
+  var BAR = load("rr2.bar", "open");
+  var TABNAME = { todo: "Unviewed", seen: "Viewed", like: "Liked", discard: "Disliked" };
+  function paintBar() {
+    var folded = BAR === "closed", b = $("#barToggle");
+    $(".top").classList.toggle("folded", folded);
+    b.setAttribute("aria-expanded", String(!folded));
+    b.setAttribute("aria-label", folded ? "Show tabs and filters" : "Hide tabs and filters");
+    b.title = folded ? "Show tabs and filters" : "Hide tabs and filters";
+    paintSub();
+  }
+  function paintSub() {
+    var sub = $("#sub");
+    if (!sub.dataset.base) sub.dataset.base = sub.textContent;
+    var n = activeCount();
+    sub.textContent = BAR === "closed"
+      ? TABNAME[tab] + " · " + (counts[tab] || 0) + (n ? " · " + n + (n === 1 ? " filter" : " filters") : "")
+      : sub.dataset.base;
+  }
   function paintCounts() {
+    paintSub();
     $("#nTodo").textContent = counts.todo;
     $("#nSeen").textContent = counts.seen;
     $("#nLike").textContent = counts.like;
@@ -373,7 +397,7 @@
     var sortTxt = { new: "newest", cheap: "cheapest", ppm: "€/m²", big: "biggest" }[F.sort];
     $("#chips").innerHTML = c.map(function (x) {
       return '<button class="chip" type="button" data-k="' + esc(x[0]) + '">' + esc(x[1]) + ' <b>×</b></button>';
-    }).join("") + '<button class="chip sort" type="button" data-k="sort">↕ ' + esc(sortTxt) + "</button>";
+    }).join("") + '<button class="chip sort" type="button" data-k="sort">' + ICON.sort + esc(sortTxt) + "</button>";
   }
 
   // ---------------------------------------------------------------- voting
@@ -413,7 +437,7 @@
     if (!n) return '<div class="gal deck is-empty"><div class="nophoto">No photos</div>' + (extra || "") + "</div>";
     var imgs = ps.map(function (p, k) {
       var src = esc(imgUrl(l.img.k, p, size));
-      return '<img class="ph ' + (k === 0 ? "top" : k === 1 ? "b1" : k === 2 ? "b2" : "hidden") + '" data-k="' + k + '" ' +
+      return '<img class="ph ' + (k === 0 ? "cur" : k === 1 ? "b1" : k === 2 ? "b2" : "hidden") + '" data-k="' + k + '" ' +
         (k < 3 ? 'src="' + src + '"' : 'data-src="' + src + '"') + ' alt="" draggable="false" decoding="async">';
     }).join("");
     return '<div class="gal deck' + (big ? " big" : "") + '" data-n="' + n + '" data-i="0">' +
@@ -432,7 +456,7 @@
     $$(".ph", d).forEach(function (img) {
       var rel = +img.dataset.k - i, broken = img.classList.contains("broken");
       img.style.transition = ""; img.style.transform = ""; img.style.opacity = ""; img.style.filter = "";
-      img.className = "ph " + (rel < 0 ? "gone" : rel === 0 ? "top" : rel === 1 ? "b1" : rel === 2 ? "b2" : "hidden") + (broken ? " broken" : "");
+      img.className = "ph " + (rel < 0 ? "gone" : rel === 0 ? "cur" : rel === 1 ? "b1" : rel === 2 ? "b2" : "hidden") + (broken ? " broken" : "");
       if (rel >= -1 && rel <= 2) loadPh(img); // what is visible, and the one a swipe back brings
     });
     var c = $(".gal-count", d); if (c) c.textContent = (i + 1) + " / " + n;
@@ -731,7 +755,7 @@
       nearHTML(l) +
       '<div class="mvote"><button data-v="discard" class="' + (v === "discard" ? "on" : "") + '">Pass</button>' +
       '<button data-v="like" class="' + (v === "like" ? "on" : "") + '">Like</button>' +
-      '<a href="' + esc(safeUrl(l.url)) + '" target="_blank" rel="noopener">open ↗</a></div></div>';
+      '<a href="' + esc(safeUrl(l.url)) + '" target="_blank" rel="noopener">open' + ICON.ext + "</a></div></div>";
   }
   var mapOnly = null;
   function plotMap() {
@@ -1017,14 +1041,8 @@
   // ------------------------------------------- header out of the way, back to top
   // Scrolling down tucks the header away so the flats get the whole screen;
   // the slightest scroll up brings it back. Far down, a button returns to the top.
-  var topEl = $(".top"), toTop = $("#toTop"), lastY = window.scrollY;
-  window.addEventListener("scroll", function () {
-    var y = window.scrollY;
-    if (y > 180 && y > lastY + 4) topEl.classList.add("tucked");
-    else if (y < lastY - 4 || y <= 180) topEl.classList.remove("tucked");
-    lastY = y;
-    toTop.hidden = y < 1400;
-  }, { passive: true });
+  var toTop = $("#toTop");
+  window.addEventListener("scroll", function () { toTop.hidden = window.scrollY < 1400; }, { passive: true });
   toTop.addEventListener("click", function () { window.scrollTo({ top: 0, behavior: "smooth" }); });
 
   $("#toastUndo").addEventListener("click", function () {
@@ -1194,9 +1212,16 @@
     });
   }
 
+  $("#barToggle").addEventListener("click", function () {
+    BAR = BAR === "closed" ? "open" : "closed";
+    save("rr2.bar", BAR);
+    paintBar();
+  });
+
   // ----------------------------------------------------------------- boot
   buildSheet();
   render();
+  paintBar();
   // keep drawing while the end of the list is within ~2 screens
   var pumping = false;
   function pump() {

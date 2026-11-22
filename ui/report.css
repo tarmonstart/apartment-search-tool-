@@ -103,8 +103,28 @@ svg.ic { width: 18px; height: 18px; flex: none; }
   padding: calc(10px + env(safe-area-inset-top)) 16px 0;
   border-bottom: 1px solid var(--line);
 }
-.top { transition: transform .25s ease; }
-.top.tucked { transform: translateY(-100%); }
+/* the handle that folds the tabs and chips away (and back) */
+.bar-handle {
+  position: absolute;
+  left: 50%;
+  bottom: -17px;
+  transform: translateX(-50%);
+  z-index: 2;
+  width: 60px;
+  height: 30px;
+  border: 1px solid var(--gilt);
+  border-radius: 0 0 30px 30px;
+  border-top: 0;
+  background: var(--bg);
+  color: var(--ink);
+  display: grid;
+  place-items: center;
+  padding: 0 0 4px;
+}
+.bar-handle svg { width: 18px; height: 18px; transition: transform .2s ease; }
+.top.folded .bar-handle svg { transform: rotate(180deg); }
+.top.folded .tabs, .top.folded .chips { display: none; }
+.top.folded .top-row { padding-bottom: 8px; }
 .totop {
   position: fixed;
   right: 16px;
@@ -241,7 +261,7 @@ svg.ic { width: 18px; height: 18px; flex: none; }
   -webkit-user-drag: none;
   cursor: zoom-in;
 }
-.ph.top { z-index: 3; box-shadow: 0 10px 22px rgba(12, 42, 41, .16); }
+.ph.cur { z-index: 3; box-shadow: 0 10px 22px rgba(12, 42, 41, .16); }
 .ph.b1 { z-index: 2; transform: translateY(7px) scale(.955); filter: brightness(.9); }
 .ph.b2 { z-index: 1; transform: translateY(14px) scale(.91); filter: brightness(.8); }
 .ph.incoming { z-index: 5; }
@@ -323,7 +343,11 @@ svg.ic { width: 18px; height: 18px; flex: none; }
 }
 .desc.open { -webkit-line-clamp: unset; display: block; }
 .links { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; justify-content: center; align-items: center; margin-top: 4px; }
-.links a { text-decoration: none; border-bottom: 1px solid var(--gilt); }
+.links a { text-decoration: none; border-bottom: 1px solid var(--gilt); display: inline-flex; align-items: center; gap: 3px; }
+svg.ext { width: 13px; height: 13px; }
+.chip.sort { display: inline-flex; align-items: center; gap: 5px; }
+.chip.sort svg { width: 15px; height: 15px; }
+.mvote a { display: inline-flex; align-items: center; gap: 2px; }
 .seentoggle { border: 0; background: none; padding: 0; color: var(--faint); font-size: 12px; letter-spacing: .04em; text-transform: none; text-decoration: underline; text-underline-offset: 3px; }
 
 .vote {
