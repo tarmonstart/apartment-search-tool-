@@ -65,7 +65,16 @@ free, with your PC switched off.
   closes itself and from then on the list, the counts and the pins show only flats
   inside it. Draw more areas to add them up; *Clear areas* (or the chip's ×) removes
   them. Flats without a known position are left out while an area is active.
-- **Photos** swipe inside the card; tap one for the full-screen gallery.
+- **Photos are a stack of prints**, not a sliding strip: swipe left and the top photo
+  falls away to show the next, swipe right and the previous one comes back up onto the
+  stack (with a mouse: the ‹ › arrows on hover). Tap the stack for full screen, where the
+  same gestures work; tap the photo for the next one, tap the dark area around it, swipe
+  down, press Esc or use the phone's back gesture to close.
+- **Back gesture** closes whatever is open (photos, filters, map) instead of leaving the
+  page. The header tucks away while you scroll down and returns on the slightest scroll
+  up; each tab remembers where you were; far down, a button takes you back to the top.
+- **Look:** the "Kvartāls" brand (Art Nouveau Rīga — teal, gilt, plaster on ivory) by
+  default; `"theme": "logs"` in `config.json` switches to the Nordic "Logs" brand.
 - **📍 address** shows that flat on the map; **🗺️ Map** shows every flat in the
   current tab and filters (blue = new, green = liked, grey = rejected) and you can vote
   straight from a pin.

@@ -103,6 +103,22 @@ svg.ic { width: 18px; height: 18px; flex: none; }
   padding: calc(10px + env(safe-area-inset-top)) 16px 0;
   border-bottom: 1px solid var(--line);
 }
+.top { transition: transform .25s ease; }
+.top.tucked { transform: translateY(-100%); }
+.totop {
+  position: fixed;
+  right: 16px;
+  bottom: calc(76px + env(safe-area-inset-bottom));
+  z-index: 30;
+  width: 46px;
+  height: 46px;
+  border: 1px solid var(--gilt);
+  background: var(--accent);
+  color: var(--accent-ink);
+  display: grid;
+  place-items: center;
+  box-shadow: 0 6px 18px rgba(12, 42, 41, .25);
+}
 .top::after {
   /* the gilt double rule under the header, like the brand page's frame */
   content: "";
@@ -200,36 +216,65 @@ svg.ic { width: 18px; height: 18px; flex: none; }
 .card.fly-left { transform: translateX(-60%) rotate(-3deg); opacity: 0; }
 .card.fly-up { transform: translateY(-20px); opacity: 0; }
 
-/* the arched window every photo sits in */
+/* The photo deck: a stack of prints in the arched window. The top one is
+   swiped away to the next; the two below peek out at the bottom edge. */
 .gal {
   position: relative;
   aspect-ratio: 4 / 3.3;
-  background: var(--soft);
-  border-radius: 50% 50% 0 0 / 26% 26% 0 0;
-  overflow: hidden;
+  margin-bottom: 14px;
+  touch-action: pan-y;           /* vertical swipes scroll the page */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
-.gal-track {
-  display: flex;
-  height: 100%;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  scrollbar-width: none;
-  overscroll-behavior-x: contain;
-}
-.gal-track::-webkit-scrollbar { display: none; }
-.gal-track img {
-  flex: 0 0 100%;
+.deck-stack { position: absolute; inset: 0; }
+.deck .ph {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  scroll-snap-align: start;
-  cursor: zoom-in;
-  user-select: none;
+  border-radius: 50% 50% 0 0 / 26% 26% 0 0;
+  background: var(--soft);
+  transition: transform .35s cubic-bezier(.2, .8, .2, 1), opacity .35s ease, filter .35s ease;
+  will-change: transform;
   -webkit-user-drag: none;
+  cursor: zoom-in;
 }
+.ph.top { z-index: 3; box-shadow: 0 10px 22px rgba(12, 42, 41, .16); }
+.ph.b1 { z-index: 2; transform: translateY(7px) scale(.955); filter: brightness(.9); }
+.ph.b2 { z-index: 1; transform: translateY(14px) scale(.91); filter: brightness(.8); }
+.ph.incoming { z-index: 5; }
+.ph.gone, .ph.hidden { visibility: hidden; z-index: 0; }
+.ph.broken { visibility: hidden; }
+.gal.is-empty { background: var(--soft); border-radius: 50% 50% 0 0 / 26% 26% 0 0; display: grid; }
 .nophoto { display: grid; place-items: center; width: 100%; color: var(--faint); font: italic 500 20px var(--serif); }
+.deck-btn {
+  position: absolute;
+  top: 50%;
+  z-index: 7;
+  width: 40px;
+  height: 40px;
+  margin-top: -20px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(250, 246, 238, .92);
+  color: #0F4C4A;
+  display: none;                 /* touch screens swipe; the arrows are for a mouse */
+  place-items: center;
+  opacity: 0;
+  transition: opacity .2s ease;
+}
+.deck-btn.prev { left: 8px; }
+.deck-btn.next { right: 8px; }
+.deck-btn[disabled] { visibility: hidden; }
+@media (hover: hover) and (pointer: fine) {
+  .deck-btn { display: grid; }
+  .deck:hover .deck-btn, .deck-btn:focus-visible { opacity: 1; }
+}
 .gal-count, .pill {
   position: absolute;
+  z-index: 6;
   font-size: 11px;
   font-weight: 500;
   letter-spacing: .1em;
@@ -414,17 +459,34 @@ svg.ic { width: 18px; height: 18px; flex: none; }
 .mvote a { margin-left: 6px; color: #0F4C4A; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
 
 /* -------------------------------------------------------------- lightbox */
-.lightbox { position: fixed; inset: 0; z-index: 60; background: #07201F; }
-.lb-track {
-  display: flex;
-  height: 100%;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  scrollbar-width: none;
+.lightbox { position: fixed; inset: 0; z-index: 60; background: rgba(7, 32, 31, .96); transition: opacity .2s ease; }
+.lb-stage {
+  position: absolute;
+  inset: calc(58px + env(safe-area-inset-top)) 12px calc(34px + env(safe-area-inset-bottom));
+  transition: transform .25s ease;
 }
-.lb-track::-webkit-scrollbar { display: none; }
-.lb-track figure { flex: 0 0 100%; margin: 0; display: grid; place-items: center; scroll-snap-align: start; }
-.lb-track img { max-width: 100%; max-height: 100%; object-fit: contain; }
+/* full screen, each photo keeps its own shape, so the dark around it is
+   really "outside the picture" and a tap there closes the viewer */
+.deck.big { position: absolute; inset: 0; aspect-ratio: auto; margin: 0; touch-action: none; }
+/* an absolutely placed image with auto size, max 100% and margin:auto is
+   exactly as big as the picture and centred — no letterbox around it */
+.deck.big .ph {
+  inset: 0;
+  margin: auto;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 2px;
+  background: transparent;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .5);
+  cursor: pointer;
+}
+.deck.big .ph.b1 { transform: scale(.9); filter: brightness(.35); opacity: .55; }
+.deck.big .ph.b2 { visibility: hidden; }
+.deck.big .gal-count { display: none; }
+.deck.big .deck-btn { background: rgba(250, 246, 238, .14); color: #FAF6EE; width: 48px; height: 48px; margin-top: -24px; }
 .lb-bar {
   position: absolute;
   top: 0;

@@ -220,19 +220,15 @@
     pin: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>',
     x: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>',
     heart: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></svg>',
+    left: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>',
+    right: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>',
   };
+  function cssEsc(s) { return window.CSS && CSS.escape ? CSS.escape(s) : String(s).replace(/"/g, '\\"'); }
   var narrow = window.matchMedia ? window.matchMedia("(max-width: 640px)") : { matches: false };
   function photos(l) { return (l.img && l.img.p) || []; }
 
   function cardHTML(l) {
-    var v = verdictOf(l), ps = photos(l), size = narrow.matches ? "card" : "grid";
-    var shown = ps.slice(0, 12);
-    var gallery = shown.length
-      ? shown.map(function (p, i) {
-          return '<img src="' + esc(imgUrl(l.img.k, p, size)) + '"' + (i ? ' loading="lazy"' : "") +
-            ' decoding="async" alt="" draggable="false" data-i="' + i + '">';
-        }).join("")
-      : '<div class="nophoto">no photos</div>';
+    var v = verdictOf(l), size = narrow.matches ? "card" : "grid";
     var tags = [];
     if (l.utilities === "included") tags.push('<span class="tag good">utilities included</span>');
     else if (l.summerUtil != null || l.winterUtil != null)
@@ -257,12 +253,9 @@
 
     var seen = !v && seenOf(l);
     return '<article class="card' + (v ? " is-" + v : "") + (seen ? " is-seen" : "") + '" data-id="' + esc(l.id) + '">' +
-      '<div class="gal" data-n="' + ps.length + '">' +
-        '<div class="gal-track">' + gallery + "</div>" +
-        (ps.length > 1 ? '<span class="gal-count">1/' + ps.length + "</span>" : "") +
+      deckHTML(l, size, false,
         (seen ? '<span class="pill seen">Viewed</span>' : l.isNew ? '<span class="pill new">New</span>' : "") +
-        (nSites > 1 ? '<span class="pill multi" title="The same flat on several sites">' + nSites + " sites</span>" : "") +
-      "</div>" +
+        (nSites > 1 ? '<span class="pill multi" title="The same flat on several sites">' + nSites + " sites</span>" : "")) +
       '<div class="info">' +
         '<div class="row1"><span class="price">' + (l.price == null ? "—" : esc(l.price) + " €") + "</span>" +
           (l.pricePerM2 != null ? '<span class="ppm">' + esc(l.pricePerM2) + " €/m²</span>" : "") +
@@ -327,12 +320,12 @@
     paintCounts();
   }
   function repaintCard(l) {
-    var el = listEl.querySelector('.card[data-id="' + (window.CSS && CSS.escape ? CSS.escape(l.id) : l.id) + '"]');
+    var el = listEl.querySelector('.card[data-id="' + cssEsc(l.id) + '"]');
     if (!el) return;
-    var tr = el.querySelector(".gal-track"), x = tr ? tr.scrollLeft : 0;
+    var dk = el.querySelector(".deck"), at = dk ? +dk.dataset.i : 0;
     el.outerHTML = cardHTML(l);
-    var fresh = listEl.querySelector('.card[data-id="' + (window.CSS && CSS.escape ? CSS.escape(l.id) : l.id) + '"] .gal-track');
-    if (fresh) fresh.scrollLeft = x;
+    var fresh = listEl.querySelector('.card[data-id="' + cssEsc(l.id) + '"] .deck');
+    if (fresh && at) { fresh.dataset.i = at; layoutDeck(fresh); }
   }
   function paintCounts() {
     $("#nTodo").textContent = counts.todo;
@@ -398,28 +391,234 @@
   }
 
   // ------------------------------------------------------------- lightbox
-  var lb = $("#lb"), lbTrack = $("#lbTrack"), lbL = null;
+  // ------------------------------------------------------------ photo deck
+  // Photos are a stack of cards, never a sliding strip. Swipe left (or tap ›)
+  // and the top photo falls away to show the next; swipe right (or ‹) and the
+  // previous photo comes back up onto the stack. The same deck runs inside
+  // each card and full screen. Vertical swipes stay page scrolls.
+  function deckHTML(l, size, big, extra) {
+    var ps = photos(l), n = ps.length;
+    if (!n) return '<div class="gal deck is-empty"><div class="nophoto">No photos</div>' + (extra || "") + "</div>";
+    var imgs = ps.map(function (p, k) {
+      var src = esc(imgUrl(l.img.k, p, size));
+      return '<img class="ph ' + (k === 0 ? "top" : k === 1 ? "b1" : k === 2 ? "b2" : "hidden") + '" data-k="' + k + '" ' +
+        (k < 3 ? 'src="' + src + '"' : 'data-src="' + src + '"') + ' alt="" draggable="false" decoding="async">';
+    }).join("");
+    return '<div class="gal deck' + (big ? " big" : "") + '" data-n="' + n + '" data-i="0">' +
+      '<div class="deck-stack">' + imgs + "</div>" + (extra || "") +
+      (n > 1
+        ? '<span class="gal-count">1 / ' + n + "</span>" +
+          '<button class="deck-btn prev" type="button" aria-label="Previous photo" disabled>' + ICON.left + "</button>" +
+          '<button class="deck-btn next" type="button" aria-label="Next photo">' + ICON.right + "</button>"
+        : "") +
+      "</div>";
+  }
+  function phAt(d, k) { return d.querySelector('.ph[data-k="' + k + '"]'); }
+  function loadPh(img) { if (img && img.dataset.src) { img.src = img.dataset.src; img.removeAttribute("data-src"); } }
+  function layoutDeck(d) {
+    var i = +d.dataset.i, n = +d.dataset.n;
+    $$(".ph", d).forEach(function (img) {
+      var rel = +img.dataset.k - i, broken = img.classList.contains("broken");
+      img.style.transition = ""; img.style.transform = ""; img.style.opacity = ""; img.style.filter = "";
+      img.className = "ph " + (rel < 0 ? "gone" : rel === 0 ? "top" : rel === 1 ? "b1" : rel === 2 ? "b2" : "hidden") + (broken ? " broken" : "");
+      if (rel >= -1 && rel <= 2) loadPh(img); // what is visible, and the one a swipe back brings
+    });
+    var c = $(".gal-count", d); if (c) c.textContent = (i + 1) + " / " + n;
+    var pb = $(".deck-btn.prev", d), nb = $(".deck-btn.next", d);
+    if (pb) pb.disabled = i <= 0;
+    if (nb) nb.disabled = i >= n - 1;
+    if (d === lbDeck) $("#lbCount").textContent = (i + 1) + " / " + n;
+  }
+  var FALL = 380;
+  function stepDeck(d, dir, fromDrag) {
+    if (!d || d.dataset.busy) return;
+    var i = +d.dataset.i, n = +d.dataset.n;
+    if (dir > 0) {
+      if (i >= n - 1) return nudgeDeck(d, -1);
+      var top = phAt(d, i), nx = phAt(d, i + 1);
+      d.dataset.busy = 1;
+      top.style.transition = "transform " + FALL + "ms cubic-bezier(.5,0,.75,.4), opacity " + FALL + "ms ease-in";
+      top.style.transform = "translate(-120%, 90px) rotate(-18deg)";
+      top.style.opacity = "0";
+      if (nx) { nx.style.transform = "none"; nx.style.filter = "none"; } // the next one rises as this one falls
+      setTimeout(function () { d.dataset.i = i + 1; delete d.dataset.busy; layoutDeck(d); }, FALL);
+    } else {
+      if (i <= 0) return nudgeDeck(d, 1);
+      var pv = phAt(d, i - 1), cur = phAt(d, i);
+      loadPh(pv);
+      d.dataset.busy = 1;
+      if (!fromDrag) {
+        pv.className = "ph incoming";
+        pv.style.transition = "none";
+        pv.style.transform = "translate(-120%, 90px) rotate(-18deg)";
+        pv.style.opacity = "0";
+        void pv.offsetWidth;
+      }
+      pv.style.transition = "transform " + FALL + "ms cubic-bezier(.2,.8,.2,1), opacity " + FALL + "ms ease-out";
+      pv.style.transform = "none";
+      pv.style.opacity = "1";
+      if (cur) { cur.style.transform = "translateY(7px) scale(.955)"; cur.style.filter = "brightness(.9)"; } // sinks one place
+      setTimeout(function () { d.dataset.i = i - 1; delete d.dataset.busy; layoutDeck(d); }, FALL);
+    }
+  }
+  function nudgeDeck(d, sign) {
+    var top = phAt(d, +d.dataset.i); if (!top) return;
+    top.style.transition = "transform 140ms ease-out";
+    top.style.transform = "translateX(" + (sign * 16) + "px)";
+    setTimeout(function () { top.style.transform = ""; }, 150);
+  }
+
+  // dragging: the browser keeps vertical scrolling (touch-action: pan-y);
+  // a horizontal drag moves the photo under the finger
+  var drag = null, suppressClick = false;
+  function quietClicks() { suppressClick = true; setTimeout(function () { suppressClick = false; }, 60); }
+  document.addEventListener("pointerdown", function (e) {
+    var d = e.target.closest && e.target.closest(".deck");
+    if (!d || d.classList.contains("is-empty") || (e.button && e.button !== 0) || e.target.closest(".deck-btn") || d.dataset.busy) return;
+    drag = { d: d, x: e.clientX, y: e.clientY, dx: 0, dy: 0, lock: null, id: e.pointerId, t: Date.now() };
+  });
+  function dragPaint(d, dx) {
+    var i = +d.dataset.i, n = +d.dataset.n, w = d.clientWidth || 300, top = phAt(d, i), pv = phAt(d, i - 1);
+    if (dx <= 0) {
+      if (pv && pv.classList.contains("incoming")) { pv.className = "ph gone"; pv.style.transform = ""; pv.style.opacity = ""; }
+      var k = i >= n - 1 ? 0.25 : 1; // the last photo only gives a little
+      top.style.transition = "none";
+      top.style.transform = "translate(" + dx * k + "px," + Math.abs(dx) * 0.15 * k + "px) rotate(" + dx * k / 24 + "deg)";
+    } else {
+      top.style.transform = "";
+      if (!pv) { top.style.transition = "none"; top.style.transform = "translateX(" + dx * 0.25 + "px)"; return; }
+      loadPh(pv);
+      var p = Math.min(1, dx / w);
+      pv.className = "ph incoming";
+      pv.style.transition = "none";
+      pv.style.opacity = String(Math.min(1, 0.35 + p));
+      pv.style.transform = "translate(" + (-1.2 * w * (1 - p)) + "px," + 90 * (1 - p) + "px) rotate(" + (-18 * (1 - p)) + "deg)";
+    }
+  }
+  document.addEventListener("pointermove", function (e) {
+    if (!drag || e.pointerId !== drag.id) return;
+    var dx = e.clientX - drag.x, dy = e.clientY - drag.y, d = drag.d, big = d.classList.contains("big");
+    if (!drag.lock) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      drag.lock = Math.abs(dx) >= Math.abs(dy) ? "x" : "y";
+      if (drag.lock === "x" || big) { try { d.setPointerCapture(e.pointerId); } catch (err) {} }
+    }
+    drag.dx = dx; drag.dy = dy;
+    if (drag.lock === "y") {
+      // full screen: pull the photo down to close
+      if (big && dy > 0) {
+        $("#lbStage").style.transition = "none";
+        $("#lbStage").style.transform = "translateY(" + dy + "px) scale(" + Math.max(0.85, 1 - dy / 1600) + ")";
+        lb.style.opacity = String(Math.max(0.35, 1 - dy / 500));
+      }
+      return;
+    }
+    dragPaint(d, dx);
+  });
+  function endDrag(e, cancelled) {
+    if (!drag || (e && e.pointerId !== drag.id)) return;
+    var g = drag, d = g.d, dt = Math.max(1, Date.now() - g.t);
+    drag = null;
+    if (!g.lock) return; // a tap: the click handlers deal with it
+    quietClicks();
+    if (g.lock === "y") {
+      if (d.classList.contains("big")) {
+        if (!cancelled && g.dy > 110) closeLB();
+        else { $("#lbStage").style.transition = ""; $("#lbStage").style.transform = ""; lb.style.opacity = ""; }
+      }
+      return;
+    }
+    var w = d.clientWidth || 300, fast = Math.abs(g.dx) / dt > 0.45;
+    var go = !cancelled && (Math.abs(g.dx) > w * 0.2 || (fast && Math.abs(g.dx) > 30));
+    var i = +d.dataset.i, n = +d.dataset.n;
+    if (go && g.dx < 0 && i < n - 1) stepDeck(d, 1, true);
+    else if (go && g.dx > 0 && i > 0) stepDeck(d, -1, true);
+    else {
+      // not far enough: everything settles back where it was
+      var top = phAt(d, i), pv = phAt(d, i - 1);
+      top.style.transition = "transform 220ms cubic-bezier(.2,.8,.2,1)"; top.style.transform = "";
+      if (pv && pv.classList.contains("incoming")) {
+        pv.style.transition = "transform 220ms ease-in, opacity 220ms";
+        pv.style.transform = "translate(-120%, 90px) rotate(-18deg)"; pv.style.opacity = "0";
+        setTimeout(function () { layoutDeck(d); }, 230);
+      }
+    }
+  }
+  document.addEventListener("pointerup", function (e) { endDrag(e, false); });
+  document.addEventListener("pointercancel", function (e) { endDrag(e, true); });
+  // ‹ › buttons (mouse and keyboard); capture phase, so a card never opens underneath
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest && e.target.closest(".deck-btn");
+    if (!b) return;
+    e.stopPropagation();
+    stepDeck(b.closest(".deck"), b.classList.contains("next") ? 1 : -1);
+  }, true);
+
+  // ------------------------------------------------------------- lightbox
+  var lb = $("#lb"), lbStage = $("#lbStage"), lbL = null, lbDeck = null;
   function openLB(l, i) {
-    lbL = l;
     var ps = photos(l);
     if (!ps.length) return;
+    lbL = l;
     markSeen(l);
-    lbTrack.innerHTML = ps.map(function (p, k) {
-      return '<figure><img ' + (Math.abs(k - i) > 1 ? 'loading="lazy" ' : "") + 'src="' + esc(imgUrl(l.img.k, p, "full")) + '" alt="" decoding="async"></figure>';
-    }).join("");
+    lbStage.innerHTML = deckHTML(l, "full", true);
+    lbDeck = $(".deck", lbStage);
+    lbDeck.dataset.i = Math.max(0, Math.min(ps.length - 1, i || 0));
+    lbStage.style.transform = ""; lb.style.opacity = "";
     lb.hidden = false;
     document.body.classList.add("noscroll");
-    lbTrack.scrollLeft = i * lbTrack.clientWidth;
-    lbCount();
+    layoutDeck(lbDeck);
+    overlayOpened("lb");
   }
-  function lbCount() {
-    var n = photos(lbL || {}).length;
-    var i = Math.round(lbTrack.scrollLeft / Math.max(1, lbTrack.clientWidth));
-    $("#lbCount").textContent = (i + 1) + " / " + n;
+  function closeLB(fromHistory) {
+    if (lb.hidden) return;
+    // the card's own stack follows to the photo you stopped at
+    var cd = lbL && listEl.querySelector('.card[data-id="' + cssEsc(lbL.id) + '"] .deck');
+    if (cd && lbDeck) { cd.dataset.i = lbDeck.dataset.i; layoutDeck(cd); }
+    lb.hidden = true; lbStage.innerHTML = ""; lbDeck = null;
+    document.body.classList.remove("noscroll");
+    if (fromHistory !== true) overlayClosedByUI("lb");
   }
-  function closeLB() { lb.hidden = true; lbTrack.innerHTML = ""; document.body.classList.remove("noscroll"); }
-  lbTrack.addEventListener("scroll", lbCount, { passive: true });
-  $("#lbClose").addEventListener("click", closeLB);
+  $("#lbClose").addEventListener("click", function () { closeLB(); });
+  // tap the photo for the next one; tap the dark area around it to close
+  lb.addEventListener("click", function (e) {
+    if (suppressClick) return;
+    if (e.target.closest(".lb-bar") || e.target.closest(".deck-btn")) return;
+    if (e.target.closest(".ph")) { stepDeck(lbDeck, 1); return; }
+    closeLB();
+  });
+  // full screen, each photo is sized to its own proportions inside the stage,
+  // so its frame is exactly the picture (and the dark around it is "outside")
+  function fitBig(img) {
+    if (!img || !img.naturalWidth || !lbDeck) return;
+    var W = lbDeck.clientWidth, H = lbDeck.clientHeight;
+    var k = Math.min(W / img.naturalWidth, H / img.naturalHeight, 2);
+    img.style.width = Math.round(img.naturalWidth * k) + "px";
+    img.style.height = Math.round(img.naturalHeight * k) + "px";
+  }
+  lb.addEventListener("load", function (e) { if (e.target.classList && e.target.classList.contains("ph")) fitBig(e.target); }, true);
+  window.addEventListener("resize", function () { if (lbDeck) $$(".ph", lbDeck).forEach(fitBig); });
+  lb.addEventListener("error", function (e) { if (e.target.classList && e.target.classList.contains("ph")) e.target.classList.add("broken"); }, true);
+
+  // ------------------------------------------------- back button = close
+  // On a phone the back gesture should close the photo viewer, the filters
+  // or the map, not leave the page. Each overlay adds a history entry.
+  var overlays = [], ignorePop = 0, CLOSERS = {};
+  function overlayOpened(name) {
+    overlays.push(name);
+    try { history.pushState({ rr: name }, ""); } catch (e) {}
+  }
+  function overlayClosedByUI(name) {
+    var at = overlays.lastIndexOf(name);
+    if (at < 0) return;
+    overlays.splice(at, 1);
+    try { if (history.state && history.state.rr === name) { ignorePop++; history.back(); } } catch (e) {}
+  }
+  window.addEventListener("popstate", function () {
+    if (ignorePop) { ignorePop--; return; }
+    var name = overlays.pop();
+    if (name && CLOSERS[name]) CLOSERS[name](true);
+  });
 
   // ------------------------------------------------------------------ map
   var map = null, layer = null, zoneLayer = null;
@@ -573,16 +772,19 @@
   });
   function openMap(one) {
     mapOnly = one || null;
+    if ($("#map").hidden) overlayOpened("map");
     $("#map").hidden = false;
     document.body.classList.add("noscroll");
     ensureMap();
     setTimeout(function () { if (map) { map.invalidateSize(); plotMap(); } }, 30);
   }
-  function closeMap() {
+  function closeMap(fromHistory) {
+    if ($("#map").hidden) return;
     if (drawArmed) disarmDraw();
     $("#map").hidden = true; document.body.classList.remove("noscroll"); mapOnly = null;
+    if (fromHistory !== true) overlayClosedByUI("map");
   }
-  $("#mapClose").addEventListener("click", closeMap);
+  $("#mapClose").addEventListener("click", function () { closeMap(); });
   $("#mapCanvas").addEventListener("click", function (e) {
     var b = e.target.closest(".mvote button"); if (!b) return;
     var box = b.closest(".mpop"), l = byId[box.dataset.id]; if (!l) return;
@@ -632,7 +834,7 @@
   function numOrNull(v) { v = parseFloat(v); return isFinite(v) && v > 0 ? v : null; }
 
   sheet.addEventListener("click", function (e) {
-    if (e.target.closest("[data-close]")) { sheet.hidden = true; document.body.classList.remove("noscroll"); return; }
+    if (e.target.closest("[data-close]")) { closeSheet(); return; }
     var b = e.target.closest("button[data-v]"); if (!b) return;
     var box = b.parentNode, v = b.dataset.v;
     if (box.classList.contains("presets")) {
@@ -653,11 +855,18 @@
   });
   function openSheet(focus) {
     $("#toast").hidden = true;
-    paintSheet(); sheet.hidden = false; document.body.classList.add("noscroll");
+    paintSheet();
+    if (sheet.hidden) overlayOpened("sheet");
+    sheet.hidden = false; document.body.classList.add("noscroll");
     if (focus) setTimeout(function () { var el = $(focus); if (el) el.scrollIntoView({ block: "center" }); }, 50);
   }
   $("#filterBtn").addEventListener("click", function () { openSheet(); });
-  function closeSheet() { sheet.hidden = true; document.body.classList.remove("noscroll"); }
+  function closeSheet(fromHistory) {
+    if (sheet.hidden) return;
+    sheet.hidden = true; document.body.classList.remove("noscroll");
+    if (fromHistory !== true) overlayClosedByUI("sheet");
+  }
+  CLOSERS.lb = closeLB; CLOSERS.map = closeMap; CLOSERS.sheet = closeSheet;
   $("#zoneDraw").addEventListener("click", function () {
     closeSheet();
     openMap(null);
@@ -677,9 +886,16 @@
   });
 
   // ----------------------------------------------------------------- tabs
+  // each tab keeps its own scroll position; tapping the open tab goes to the top
+  var tabY = {};
   $$(".tab").forEach(function (t) {
     t.addEventListener("click", function () {
-      tab = t.dataset.tab; save(LS_TAB, tab); keepHere.clear(); render(); window.scrollTo(0, 0);
+      if (t.dataset.tab === tab) { window.scrollTo({ top: 0, behavior: "smooth" }); return; }
+      tabY[tab] = window.scrollY;
+      tab = t.dataset.tab; save(LS_TAB, tab); keepHere.clear(); render();
+      var y = tabY[tab] || 0;
+      while (drawn < rows.length && listEl.offsetTop + listEl.scrollHeight < y + innerHeight) drawMore();
+      window.scrollTo(0, y);
     });
   });
 
@@ -697,22 +913,27 @@
     }
     var a = e.target.closest(".links a");
     if (a) { markSeen(l); return; }
-    var img = e.target.closest(".gal img");
-    if (img) { openLB(l, +img.dataset.i || 0); return; }
+    var dk = e.target.closest(".deck");
+    if (dk) { if (!suppressClick && !dk.classList.contains("is-empty")) openLB(l, +dk.dataset.i || 0); return; }
     if (e.target.closest(".desc")) e.target.closest(".desc").classList.toggle("open");
   });
-  // the photo counter follows a swipe through the card gallery
-  listEl.addEventListener("scroll", function (e) {
-    var tr = e.target;
-    if (!tr.classList || !tr.classList.contains("gal-track")) return;
-    var gal = tr.parentNode, c = $(".gal-count", gal); if (!c) return;
-    var i = Math.round(tr.scrollLeft / Math.max(1, tr.clientWidth));
-    c.textContent = (i + 1) + "/" + gal.dataset.n;
-  }, true);
-  // a missing photo just drops out of the gallery
+  // a photo that fails to load is skipped visually (the count stays honest)
   listEl.addEventListener("error", function (e) {
-    if (e.target.tagName === "IMG") e.target.remove();
+    if (e.target.classList && e.target.classList.contains("ph")) e.target.classList.add("broken");
   }, true);
+
+  // ------------------------------------------- header out of the way, back to top
+  // Scrolling down tucks the header away so the flats get the whole screen;
+  // the slightest scroll up brings it back. Far down, a button returns to the top.
+  var topEl = $(".top"), toTop = $("#toTop"), lastY = window.scrollY;
+  window.addEventListener("scroll", function () {
+    var y = window.scrollY;
+    if (y > 180 && y > lastY + 4) topEl.classList.add("tucked");
+    else if (y < lastY - 4 || y <= 180) topEl.classList.remove("tucked");
+    lastY = y;
+    toTop.hidden = y < 1400;
+  }, { passive: true });
+  toTop.addEventListener("click", function () { window.scrollTo({ top: 0, behavior: "smooth" }); });
 
   $("#toastUndo").addEventListener("click", function () {
     if (!undoSnap) return;
@@ -725,11 +946,9 @@
     if (e.key === "Escape") {
       if (!lb.hidden) closeLB();
       else if (!$("#map").hidden) { if (drawArmed) disarmDraw(); else closeMap(); }
-      else if (!sheet.hidden) { sheet.hidden = true; document.body.classList.remove("noscroll"); }
+      else if (!sheet.hidden) closeSheet();
     }
-    if (!lb.hidden && (e.key === "ArrowRight" || e.key === "ArrowLeft")) {
-      lbTrack.scrollBy({ left: (e.key === "ArrowRight" ? 1 : -1) * lbTrack.clientWidth, behavior: "smooth" });
-    }
+    if (!lb.hidden && (e.key === "ArrowRight" || e.key === "ArrowLeft")) stepDeck(lbDeck, e.key === "ArrowRight" ? 1 : -1);
   });
 
   // ---------------------------------------------------------------- backup
