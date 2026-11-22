@@ -98,10 +98,10 @@
   },
 
   "firebase": {
-    "apiKey": "",
-    "authDomain": "",
-    "projectId": "",
-    "appId": "",
+    "apiKey": "AIzaSyCRPyDc5Bk-XuPcxPcGaonPqx3zUK_qvm4",
+    "authDomain": "apt-searcher-c03e5.firebaseapp.com",
+    "projectId": "apt-searcher-c03e5",
+    "appId": "1:466228222112:web:269bce5c32b87d362051c5",
     "_note": "Optional. Fill these in (Firebase console → Project settings → Your apps → Web app config) to get a 'Sign in' button: votes and views then live in your Google account and sync between devices. These values are public web-app identifiers, not secrets. Setup steps: README, 'Sign in and sync'."
   },
 
