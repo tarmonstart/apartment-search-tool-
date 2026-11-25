@@ -36,6 +36,7 @@ const { geocodeAll } = require("./lib/geocode");
 const { loadUserState, saveUserState, spreadVerdicts, countVerdicts } = require("./lib/state");
 const { writeHTML, writeCSV } = require("./lib/report");
 const { loadPois, attachNearest } = require("./lib/pois");
+const { roomRentalHit } = require("./lib/detect");
 
 const ARGS = new Set(process.argv.slice(2));
 const FAST = ARGS.has("--fast");
@@ -221,6 +222,20 @@ async function collectAll() {
 
     fs.mkdirSync(STATE_DIR, { recursive: true });
     fs.writeFileSync(CACHE_FILE, JSON.stringify(list));
+  }
+
+  // A room (or a bed) in a shared flat is not a flat. The sources flag what
+  // the full ad text gives away; the title and description are checked here
+  // too, which also covers the sources without a per-ad read — and a --report
+  // rebuild of an older cache.
+  if (CONFIG.excludeRoomRentals !== false) {
+    const why = (l) => (l.roomRental ? "full ad text" : roomRentalHit((l.title || "") + " " + (l.description || "")));
+    const rooms = list.filter(why);
+    if (rooms.length) {
+      list = list.filter((l) => !why(l));
+      log(`  left out ${rooms.length} room-in-a-shared-flat ad${rooms.length === 1 ? "" : "s"} (excludeRoomRentals)`);
+      for (const l of rooms.slice(0, 8)) log(`    ${l.id} · ${l.price}€ · "${why(l)}"`);
+    }
   }
 
   // same ad crawled twice in one run

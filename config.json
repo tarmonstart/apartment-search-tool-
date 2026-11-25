@@ -23,6 +23,8 @@
   "_renovatedPriority": "Sort renovated / new listings to the top.",
   "excludeOld": true,
   "_excludeOld": "Drop listings clearly flagged as needing repair / run-down. Unknown condition is kept.",
+  "excludeRoomRentals": true,
+  "_excludeRoomRentals": "Drop ads that rent out one room (or a bed) in a shared flat rather than a whole flat: 'izīrē istabu', 'istaba 3-istabu dzīvoklī', 'koplietošanas virtuve', 'сдаётся комната', 'общая кухня', 'room for rent in a shared apartment', 'flatmates'... Set false to keep them.",
   "requireRenovated": false,
   "_requireRenovated": "Set true to keep ONLY listings confirmed renovated/new (hides unknowns too).",
 

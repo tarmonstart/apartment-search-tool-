@@ -148,6 +148,11 @@ flats matches on all four.
 - `allowedRooms`, `preferredRooms`, `minArea`, `excludeFirstFloor`
 - `excludeOld` / `requireRenovated` / `renovatedPriority`
 - `requireUtilitiesIncluded` — `true` hides listings where utilities are extra
+- `excludeRoomRentals` — `true` (the default) leaves out ads that rent one room or a bed in a
+  shared flat ("izīrē istabu", "istaba 3-istabu dzīvoklī", "сдаётся комната", "общая кухня",
+  "room for rent in a shared apartment", flatmates…). They sit in the same "flats" category
+  as whole flats, so the ad text is what gives them away; the run log lists what was dropped
+  and the words that caught it. `false` keeps them.
 - `sslv.maxPages`, `city24.maxPages`, `city24.allowedDistricts`, `pplv.regions`,
   `varianti.pageSize`, `reklama.maxPages` — and `enabled: false` turns any source off
 - `dedupe.threshold` — how much evidence is needed before two posts are treated as the same
@@ -160,7 +165,7 @@ flats matches on all four.
 find-rentals.js          orchestrator: collect → filter → deep-read → geocode → dedupe → write
 serve.js                 tiny LAN server: phone access + verdicts saved straight to disk
 lib/http.js              fetching: retries, timeouts, gzip, POST, bounded concurrency
-lib/detect.js            utilities / condition / furnishing from Latvian, Russian, English copy
+lib/detect.js            utilities / condition / furnishing / room-in-a-shared-flat, from LV / RU / EN copy
 lib/sources/sslv.js      ss.lv listing tables + per-ad deep read + galleries
 lib/sources/city24.js    city24 search API
 lib/sources/pplv.js      pp.lv apipub API
