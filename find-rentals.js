@@ -309,6 +309,8 @@ async function collectAll() {
           authDomain: CONFIG.firebase.authDomain,
           projectId: CONFIG.firebase.projectId,
           appId: CONFIG.firebase.appId,
+          // Google sign-in on the page itself (see README, "Sign in on phones")
+          googleClientId: CONFIG.firebase.googleClientId || null,
         }
       : null,
   };

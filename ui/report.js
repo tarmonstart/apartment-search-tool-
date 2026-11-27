@@ -1188,6 +1188,34 @@
       document.head.appendChild(sc);
     });
   }
+  // Signing in. Firebase's own Google flows run through a helper page on
+  // <project>.firebaseapp.com, which hands the result back to this page through
+  // storage the two domains share — and phone browsers (all of iOS, Chrome
+  // with storage partitioning) no longer share it: the redirect flow ends on a
+  // "missing initial state" page. So when a Google client id is configured,
+  // Google's own sign-in (Google Identity Services) runs on this page and its
+  // token is handed to Firebase directly; nothing crosses domains. Without one,
+  // Firebase's popup is used (fine on desktop), and never the redirect.
+  var gisClient = null;
+  var BLOCKED = "The sign-in window was blocked. Allow pop-ups for this site, then tap Sign in again.";
+  function initGis() {
+    if (!FB.googleClientId) return Promise.resolve();
+    return loadScript("https://accounts.google.com/gsi/client").then(function () {
+      gisClient = google.accounts.oauth2.initTokenClient({
+        client_id: FB.googleClientId,
+        scope: "openid email profile",
+        callback: function (r) {
+          if (!r || !r.access_token) {
+            if (r && r.error && r.error !== "access_denied") toast("Sign-in failed: " + (r.error_description || r.error));
+            return;
+          }
+          firebase.auth().signInWithCredential(firebase.auth.GoogleAuthProvider.credential(null, r.access_token))
+            .catch(function (e) { toast("Sign-in failed: " + (e.message || e.code)); });
+        },
+        error_callback: function (e) { if (e && e.type === "popup_failed_to_open") toast(BLOCKED); },
+      });
+    }).catch(function () {});
+  }
   function initCloud() {
     if (!FB || !FB.apiKey) return;
     var v = "https://www.gstatic.com/firebasejs/10.12.2/";
@@ -1195,22 +1223,22 @@
     loadScript(v + "firebase-app-compat.js")
       .then(function () { return Promise.all([loadScript(v + "firebase-auth-compat.js"), loadScript(v + "firebase-firestore-compat.js")]); })
       .then(function () {
-        firebase.initializeApp(FB);
+        firebase.initializeApp({ apiKey: FB.apiKey, authDomain: FB.authDomain, projectId: FB.projectId, appId: FB.appId });
         firebase.auth().onAuthStateChanged(function (u) { if (u) startCloud(u); else stopCloud(); });
-        // a sign-in that had to fall back to a full-page redirect lands here
-        firebase.auth().getRedirectResult().catch(function () {});
+        return initGis();
       })
       .catch(function () { paintSync("Could not load sign-in (offline?). Votes are kept in this browser for now."); });
     $("#authBtn").addEventListener("click", function () {
-      if (typeof firebase === "undefined") return;
+      if (typeof firebase === "undefined" || !firebase.apps.length) { toast("Sign-in is still loading. Try again in a moment."); return; }
       if (cloud.user) {
         if (confirm("Signed in as " + (cloud.user.email || "you") + ". Sign out on this device?")) firebase.auth().signOut();
         return;
       }
-      var prov = new firebase.auth.GoogleAuthProvider();
-      firebase.auth().signInWithPopup(prov).catch(function (e) {
-        if (e && (e.code === "auth/popup-blocked" || e.code === "auth/operation-not-supported-in-this-environment"))
-          firebase.auth().signInWithRedirect(prov);
+      // the window has to open inside this tap, or the browser blocks it
+      if (gisClient) { gisClient.requestAccessToken(); return; }
+      if (FB.googleClientId) { toast("Sign-in is still loading. Try again in a moment."); return; }
+      firebase.auth().signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(function (e) {
+        if (e && e.code === "auth/popup-blocked") toast(BLOCKED);
         else if (e && e.code !== "auth/popup-closed-by-user" && e.code !== "auth/cancelled-popup-request")
           toast("Sign-in failed: " + (e.message || e.code));
       });

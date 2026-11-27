@@ -127,6 +127,25 @@ them into another device (it never wipes anything).
    rules in step 4 are what protect the data.
 6. Commit; the next build (or *Actions → Run workflow*) shows the **Sign in** button.
 
+#### Sign in on phones (Google's own sign-in on the page)
+
+Firebase's Google sign-in goes through a helper page on `<project>.firebaseapp.com`.
+Phone browsers keep that domain's storage apart from the site's, so on an iPhone the
+flow can end on *"Unable to process request due to missing initial state"*. The report
+avoids that by running Google's sign-in on the page itself and handing the token to
+Firebase — it only needs the site's address on the project's Google sign-in client:
+
+1. <https://console.cloud.google.com/apis/credentials> (pick the Firebase project at the
+   top) → **OAuth 2.0 Client IDs** → **Web client (auto created by Google Service)**.
+2. **Authorized JavaScript origins → Add URI:** `https://tarmonstart.github.io`
+   (no path, no trailing slash) → **Save**. It can take a few minutes to apply.
+3. Put that client's **Client ID** into `config.json` as `firebase.googleClientId`.
+   (It is also printed in Firebase → Authentication → Sign-in method → Google →
+   *Web SDK configuration*.) Public, not a secret.
+
+Without `googleClientId` the button falls back to Firebase's popup, which works on
+desktop browsers.
+
 Served from your own PC with `serve.js`, every vote also goes straight to
 `state/user-state.json`, and each run keeps a dated snapshot in `state/backups/history/`.
 Votes from the earlier Like / Maybe / Discard report carry over (a *maybe* counts as 👍).
